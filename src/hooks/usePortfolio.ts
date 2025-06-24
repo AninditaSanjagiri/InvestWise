@@ -66,73 +66,75 @@ export const usePortfolio = () => {
     }
   }
 
-  const buyStock = async (symbol: string, companyName: string, shares: number, price: number) => {
-    if (!portfolio) return
+    const buyStock = async (symbol: string, companyName: string, shares: number, price: number) => {
+  if (!portfolio) return
 
-    const total = shares * price
+  const total = shares * price
 
-    if (total > portfolio.balance) {
-      throw new Error('Insufficient funds')
-    }
+  if (portfolio.balance < total) {
+    throw new Error('Insufficient funds')
+  }
 
-    try {
-      // Update portfolio balance
+  try {
+    // Update portfolio balance
+    await supabase
+      .from('portfolios')
+      .update({ 
+        balance: portfolio.balance - total,
+        total_value: portfolio.total_value
+      })
+      .eq('id', portfolio.id)
+
+    // Create or update holding
+    const existingHolding = holdings.find(h => h.symbol === symbol)
+
+    if (existingHolding) {
+      const newShares = existingHolding.shares + shares
+      const newAvgPrice = ((existingHolding.shares * existingHolding.avg_price) + total) / newShares
+
       await supabase
-        .from('portfolios')
-        .update({ 
-          balance: portfolio.balance - total,
-          total_value: portfolio.total_value
+        .from('holdings')
+        .update({
+          shares: newShares,
+          avg_price: newAvgPrice,
+          current_price: price
         })
-        .eq('id', portfolio.id)
-
-      // Create or update holding
-      const existingHolding = holdings.find(h => h.symbol === symbol)
-      
-      if (existingHolding) {
-        const newShares = existingHolding.shares + shares
-        const newAvgPrice = ((existingHolding.shares * existingHolding.avg_price) + total) / newShares
-        
-        await supabase
-          .from('holdings')
-          .update({
-            shares: newShares,
-            avg_price: newAvgPrice,
-            current_price: price
-          })
-          .eq('id', existingHolding.id)
-      } else {
-        await supabase
-          .from('holdings')
-          .insert({
-            portfolio_id: portfolio.id,
-            symbol,
-            company_name: companyName,
-            shares,
-            avg_price: price,
-            current_price: price
-          })
-      }
-
-      // Record transaction
+        .eq('id', existingHolding.id)
+    } else {
       await supabase
-        .from('transactions')
+        .from('holdings')
         .insert({
           portfolio_id: portfolio.id,
           symbol,
           company_name: companyName,
-          type: 'buy',
           shares,
-          price,
-          total
+          avg_price: price,
+          current_price: price
         })
-
-      // Refresh data
-      await fetchPortfolioData()
-    } catch (error) {
-      console.error('Error buying stock:', error)
-      throw error
     }
+
+    // Record transaction
+    await supabase
+      .from('transactions')
+      .insert({
+        portfolio_id: portfolio.id,
+        symbol,
+        company_name: companyName,
+        type: 'buy',
+        shares,
+        price,
+        total
+      })
+
+    // Refresh data
+    await fetchPortfolioData()
+  } catch (error) {
+    console.error('Error buying stock:', error)
+    throw error
   }
+}
+
+
 
   const sellStock = async (symbol: string, shares: number, price: number) => {
     if (!portfolio) return
