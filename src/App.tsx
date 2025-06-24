@@ -8,6 +8,9 @@ import Register from './pages/Register'
 import Dashboard from './pages/Dashboard'
 import Learn from './pages/Learn'
 import Trade from './pages/Trade'
+import Portfolio from './pages/Portfolio'
+import History from './pages/History'
+import Achievements from './pages/Achievements'
 
 function App() {
   return (
@@ -52,7 +55,7 @@ function App() {
             element={
               <ProtectedRoute>
                 <Layout>
-                  <Dashboard />
+                  <Portfolio />
                 </Layout>
               </ProtectedRoute>
             }
@@ -62,7 +65,7 @@ function App() {
             element={
               <ProtectedRoute>
                 <Layout>
-                  <Dashboard />
+                  <History />
                 </Layout>
               </ProtectedRoute>
             }
@@ -72,7 +75,7 @@ function App() {
             element={
               <ProtectedRoute>
                 <Layout>
-                  <Learn />
+                  <Achievements />
                 </Layout>
               </ProtectedRoute>
             }
