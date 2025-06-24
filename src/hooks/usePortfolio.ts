@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { Portfolio, Holding, Transaction } from '../types'
+import toast from 'react-hot-toast'
 
 export const usePortfolio = () => {
   const { user } = useAuth()
@@ -18,6 +19,8 @@ export const usePortfolio = () => {
 
   const fetchPortfolioData = async () => {
     try {
+      setLoading(true)
+      
       // Get or create portfolio
       let { data: portfolioData } = await supabase
         .from('portfolios')
@@ -40,10 +43,9 @@ export const usePortfolio = () => {
         portfolioData = newPortfolio
         
         if (!portfolioData) {
-            console.error("Portfolio fetch failed and creation failed");
-            return;
+          console.error("Portfolio fetch failed and creation failed")
+          return
         }
-
       }
 
       setPortfolio(portfolioData)
@@ -67,92 +69,101 @@ export const usePortfolio = () => {
       setTransactions(transactionsData || [])
     } catch (error) {
       console.error('Error fetching portfolio:', error)
+      toast.error('Failed to load portfolio data')
     } finally {
       setLoading(false)
     }
   }
 
-    const buyStock = async (symbol: string, companyName: string, shares: number, price: number) => {
-  if (!portfolio) return
+  const buyStock = async (symbol: string, companyName: string, shares: number, price: number) => {
+    if (!portfolio) return
 
-  const total = shares * price
+    const total = shares * price
 
-  if (portfolio.balance < total) {
-    throw new Error('Insufficient funds')
-  }
+    if (portfolio.balance < total) {
+      toast.error('Insufficient funds')
+      throw new Error('Insufficient funds')
+    }
 
-  try {
-    // Update portfolio balance
-    await supabase
-      .from('portfolios')
-      .update({ 
-        balance: portfolio.balance - total,
-        total_value: portfolio.total_value
-      })
-      .eq('id', portfolio.id)
+    try {
+      const loadingToast = toast.loading('Processing buy order...')
 
-    // Create or update holding
-    const existingHolding = holdings.find(h => h.symbol === symbol)
-
-    if (existingHolding) {
-      const newShares = existingHolding.shares + shares
-      const newAvgPrice = ((existingHolding.shares * existingHolding.avg_price) + total) / newShares
-
+      // Update portfolio balance
       await supabase
-        .from('holdings')
-        .update({
-          shares: newShares,
-          avg_price: newAvgPrice,
-          current_price: price
+        .from('portfolios')
+        .update({ 
+          balance: portfolio.balance - total,
+          total_value: portfolio.total_value
         })
-        .eq('id', existingHolding.id)
-    } else {
+        .eq('id', portfolio.id)
+
+      // Create or update holding
+      const existingHolding = holdings.find(h => h.symbol === symbol)
+
+      if (existingHolding) {
+        const newShares = existingHolding.shares + shares
+        const newAvgPrice = ((existingHolding.shares * existingHolding.avg_price) + total) / newShares
+
+        await supabase
+          .from('holdings')
+          .update({
+            shares: newShares,
+            avg_price: newAvgPrice,
+            current_price: price
+          })
+          .eq('id', existingHolding.id)
+      } else {
+        await supabase
+          .from('holdings')
+          .insert({
+            portfolio_id: portfolio.id,
+            symbol,
+            company_name: companyName,
+            shares,
+            avg_price: price,
+            current_price: price
+          })
+      }
+
+      // Record transaction
       await supabase
-        .from('holdings')
+        .from('transactions')
         .insert({
           portfolio_id: portfolio.id,
           symbol,
           company_name: companyName,
+          type: 'buy',
           shares,
-          avg_price: price,
-          current_price: price
+          price,
+          total
         })
+
+      toast.dismiss(loadingToast)
+      toast.success(`Successfully bought ${shares} shares of ${symbol}`)
+      
+      // Refresh data
+      await fetchPortfolioData()
+    } catch (error) {
+      console.error('Error buying stock:', error)
+      toast.error('Failed to complete buy order')
+      throw error
     }
-
-    // Record transaction
-    await supabase
-      .from('transactions')
-      .insert({
-        portfolio_id: portfolio.id,
-        symbol,
-        company_name: companyName,
-        type: 'buy',
-        shares,
-        price,
-        total
-      })
-
-    // Refresh data
-    await fetchPortfolioData()
-  } catch (error) {
-    console.error('Error buying stock:', error)
-    throw error
   }
-}
-
-
 
   const sellStock = async (symbol: string, shares: number, price: number) => {
     if (!portfolio) return
 
     const holding = holdings.find(h => h.symbol === symbol)
     if (!holding || holding.shares < shares) {
+      toast.error('Insufficient shares')
       throw new Error('Insufficient shares')
     }
 
     const total = shares * price
 
     try {
+      const loadingToast = toast.loading('Processing sell order...')
+
       // Update portfolio balance
       await supabase
         .from('portfolios')
@@ -193,10 +204,14 @@ export const usePortfolio = () => {
           total
         })
 
+      toast.dismiss(loadingToast)
+      toast.success(`Successfully sold ${shares} shares of ${symbol}`)
+
       // Refresh data
       await fetchPortfolioData()
     } catch (error) {
       console.error('Error selling stock:', error)
+      toast.error('Failed to complete sell order')
       throw error
     }
   }

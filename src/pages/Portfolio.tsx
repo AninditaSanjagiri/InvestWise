@@ -1,5 +1,8 @@
 import React from 'react'
 import { usePortfolio } from '../hooks/usePortfolio'
+import { motion } from 'framer-motion'
+import LoadingSpinner from '../components/LoadingSpinner'
+import SkeletonLoader from '../components/SkeletonLoader'
 import { 
   PieChart, 
   TrendingUp, 
@@ -14,8 +17,12 @@ const Portfolio: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
+      <div className="space-y-6">
+        <div className="flex items-center justify-center h-32">
+          <LoadingSpinner size="lg" text="Loading your portfolio..." />
+        </div>
+        <SkeletonLoader type="card" count={4} />
+        <SkeletonLoader type="table" count={5} />
       </div>
     )
   }
@@ -26,82 +33,108 @@ const Portfolio: React.FC = () => {
 
   const totalGainLoss = portfolio ? totalValue - 10000 : 0
 
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.1
+      }
+    }
+  }
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: { opacity: 1, y: 0 }
+  }
+
   return (
-    <div className="space-y-6">
+    <motion.div
+      variants={containerVariants}
+      initial="hidden"
+      animate="visible"
+      className="space-y-6"
+    >
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <motion.div variants={itemVariants} className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Portfolio</h1>
           <p className="text-gray-600">Detailed view of your investment portfolio and performance</p>
         </div>
-      </div>
+      </motion.div>
 
       {/* Portfolio Overview Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Total Portfolio Value</p>
-              <p className="text-2xl font-bold text-gray-900">
-                ${totalValue.toLocaleString()}
-              </p>
-            </div>
-            <div className="p-3 bg-blue-50 rounded-full">
-              <PieChart className="h-6 w-6 text-blue-600" />
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Cash Balance</p>
-              <p className="text-2xl font-bold text-gray-900">
-                ${portfolio?.balance.toLocaleString() || '0'}
-              </p>
-            </div>
-            <div className="p-3 bg-green-50 rounded-full">
-              <DollarSign className="h-6 w-6 text-green-600" />
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Total Gain/Loss</p>
-              <div className="flex items-center space-x-1">
-                <p className={`text-2xl font-bold ${totalGainLoss >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                  ${Math.abs(totalGainLoss).toLocaleString()}
-                </p>
-                {totalGainLoss >= 0 ? (
-                  <TrendingUp className="h-5 w-5 text-green-600" />
-                ) : (
-                  <TrendingDown className="h-5 w-5 text-red-600" />
-                )}
+        {[
+          {
+            title: 'Total Portfolio Value',
+            value: totalValue,
+            icon: PieChart,
+            color: 'blue'
+          },
+          {
+            title: 'Cash Balance',
+            value: portfolio?.balance || 0,
+            icon: DollarSign,
+            color: 'green'
+          },
+          {
+            title: 'Total Gain/Loss',
+            value: totalGainLoss,
+            icon: totalGainLoss >= 0 ? TrendingUp : TrendingDown,
+            color: totalGainLoss >= 0 ? 'green' : 'red'
+          },
+          {
+            title: 'Active Positions',
+            value: holdings.length,
+            icon: BarChart3,
+            color: 'purple'
+          }
+        ].map((stat, index) => {
+          const Icon = stat.icon
+          return (
+            <motion.div
+              key={stat.title}
+              variants={itemVariants}
+              whileHover={{ y: -5, scale: 1.02 }}
+              className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-all duration-300"
+            >
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">{stat.title}</p>
+                  <div className="flex items-center space-x-1">
+                    <p className={`text-2xl font-bold ${
+                      stat.title === 'Total Gain/Loss' 
+                        ? totalGainLoss >= 0 ? 'text-green-600' : 'text-red-600'
+                        : 'text-gray-900'
+                    }`}>
+                      {stat.title === 'Active Positions' 
+                        ? stat.value 
+                        : `$${Math.abs(stat.value).toLocaleString()}`
+                      }
+                    </p>
+                    {stat.title === 'Total Gain/Loss' && totalGainLoss !== 0 && (
+                      <Icon className={`h-5 w-5 ${totalGainLoss >= 0 ? 'text-green-600' : 'text-red-600'}`} />
+                    )}
+                  </div>
+                </div>
+                <motion.div
+                  whileHover={{ scale: 1.1 }}
+                  className={`p-3 bg-${stat.color}-50 rounded-full`}
+                >
+                  <Icon className={`h-6 w-6 text-${stat.color}-600`} />
+                </motion.div>
               </div>
-            </div>
-            <div className={`p-3 rounded-full ${totalGainLoss >= 0 ? 'bg-green-50' : 'bg-red-50'}`}>
-              <Activity className="h-6 w-6 text-gray-600" />
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Active Positions</p>
-              <p className="text-2xl font-bold text-gray-900">{holdings.length}</p>
-            </div>
-            <div className="p-3 bg-purple-50 rounded-full">
-              <BarChart3 className="h-6 w-6 text-purple-600" />
-            </div>
-          </div>
-        </div>
+            </motion.div>
+          )
+        })}
       </div>
 
       {/* Holdings Table */}
-      <div className="bg-white rounded-lg shadow-md p-6">
+      <motion.div
+        variants={itemVariants}
+        className="bg-white rounded-lg shadow-md p-6"
+      >
         <h2 className="text-lg font-semibold text-gray-900 mb-4">Your Holdings</h2>
         {holdings.length === 0 ? (
           <div className="text-center py-12">
@@ -135,13 +168,19 @@ const Portfolio: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {holdings.map((holding) => {
+                {holdings.map((holding, index) => {
                   const marketValue = holding.shares * holding.current_price
                   const gainLoss = holding.shares * (holding.current_price - holding.avg_price)
                   const gainLossPercent = ((holding.current_price - holding.avg_price) / holding.avg_price) * 100
                   
                   return (
-                    <tr key={holding.id} className="hover:bg-gray-50">
+                    <motion.tr
+                      key={holding.id}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: index * 0.1 }}
+                      className="hover:bg-gray-50"
+                    >
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div>
                           <div className="text-sm font-medium text-gray-900">{holding.symbol}</div>
@@ -168,17 +207,20 @@ const Portfolio: React.FC = () => {
                           ({gainLoss >= 0 ? '+' : ''}{gainLossPercent.toFixed(2)}%)
                         </div>
                       </td>
-                    </tr>
+                    </motion.tr>
                   )
                 })}
               </tbody>
             </table>
           </div>
         )}
-      </div>
+      </motion.div>
 
       {/* Portfolio Allocation */}
-      <div className="bg-white rounded-lg shadow-md p-6">
+      <motion.div
+        variants={itemVariants}
+        className="bg-white rounded-lg shadow-md p-6"
+      >
         <h2 className="text-lg font-semibold text-gray-900 mb-4">Portfolio Allocation</h2>
         {holdings.length === 0 ? (
           <div className="text-center py-8">
@@ -186,55 +228,70 @@ const Portfolio: React.FC = () => {
           </div>
         ) : (
           <div className="space-y-4">
-            {holdings.map((holding) => {
+            {holdings.map((holding, index) => {
               const marketValue = holding.shares * holding.current_price
               const percentage = (marketValue / totalValue) * 100
               
               return (
-                <div key={holding.id} className="flex items-center justify-between">
+                <motion.div
+                  key={holding.id}
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: index * 0.1 }}
+                  className="flex items-center justify-between"
+                >
                   <div className="flex items-center space-x-3">
                     <div className="w-4 h-4 bg-blue-500 rounded-full"></div>
                     <span className="font-medium text-gray-900">{holding.symbol}</span>
                   </div>
                   <div className="flex items-center space-x-4">
                     <div className="w-32 bg-gray-200 rounded-full h-2">
-                      <div 
+                      <motion.div 
+                        initial={{ width: 0 }}
+                        animate={{ width: `${percentage}%` }}
+                        transition={{ delay: index * 0.1, duration: 0.8 }}
                         className="bg-blue-500 h-2 rounded-full" 
-                        style={{ width: `${percentage}%` }}
-                      ></div>
+                      />
                     </div>
                     <span className="text-sm font-medium text-gray-600 w-12 text-right">
                       {percentage.toFixed(1)}%
                     </span>
                   </div>
-                </div>
+                </motion.div>
               )
             })}
             
             {/* Cash allocation */}
             {portfolio && portfolio.balance > 0 && (
-              <div className="flex items-center justify-between">
+              <motion.div
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: holdings.length * 0.1 }}
+                className="flex items-center justify-between"
+              >
                 <div className="flex items-center space-x-3">
                   <div className="w-4 h-4 bg-green-500 rounded-full"></div>
                   <span className="font-medium text-gray-900">Cash</span>
                 </div>
                 <div className="flex items-center space-x-4">
                   <div className="w-32 bg-gray-200 rounded-full h-2">
-                    <div 
-                      className="bg-green-500 h-2 rounded-full" 
-                      style={{ width: `${(portfolio.balance / totalValue) * 100}%` }}
-                    ></div>
+                    <motion.div 
+                      initial={{ width: 0 }}
+                      animate={{ width: `${(portfolio.balance / totalValue) * 100}%` }}
+                      transition={{ delay: holdings.length * 0.1, duration: 0.8 }}
+                      className="bg-green-500 h-2 rounded-full"
+                    />
                   </div>
                   <span className="text-sm font-medium text-gray-600 w-12 text-right">
                     {((portfolio.balance / totalValue) * 100).toFixed(1)}%
                   </span>
                 </div>
-              </div>
+              </motion.div>
             )}
           </div>
         )}
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   )
 }
 

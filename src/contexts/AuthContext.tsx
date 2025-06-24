@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react'
 import { User } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
+import toast from 'react-hot-toast'
 
 interface AuthContextType {
   user: User | null
@@ -36,6 +37,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       async (event, session) => {
         setUser(session?.user ?? null)
         setLoading(false)
+        
+        if (event === 'SIGNED_IN') {
+          toast.success('Welcome back!')
+        }
       }
     )
 
@@ -53,7 +58,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       },
     })
 
-    if (error) throw error
+    if (error) {
+      toast.error(error.message)
+      throw error
+    } else {
+      toast.success('Account created successfully!')
+    }
   }
 
   const signIn = async (email: string, password: string) => {
@@ -62,12 +72,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       password,
     })
 
-    if (error) throw error
+    if (error) {
+      toast.error(error.message)
+      throw error
+    }
   }
 
   const signOut = async () => {
     const { error } = await supabase.auth.signOut()
-    if (error) throw error
+    if (error) {
+      toast.error('Failed to sign out')
+      throw error
+    }
   }
 
   const value = {

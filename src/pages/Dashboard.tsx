@@ -1,5 +1,8 @@
 import React, { useEffect, useState } from 'react'
 import { usePortfolio } from '../hooks/usePortfolio'
+import { motion } from 'framer-motion'
+import LoadingSpinner from '../components/LoadingSpinner'
+import SkeletonLoader from '../components/SkeletonLoader'
 import { 
   DollarSign, 
   TrendingUp, 
@@ -80,118 +83,152 @@ const Dashboard: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
+      <div className="space-y-6">
+        <div className="flex items-center justify-center h-32">
+          <LoadingSpinner size="lg" text="Loading your dashboard..." />
+        </div>
+        <SkeletonLoader type="card" count={4} />
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <SkeletonLoader type="card" count={1} />
+          <SkeletonLoader type="list" count={3} />
+        </div>
       </div>
     )
   }
 
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.1
+      }
+    }
+  }
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: { opacity: 1, y: 0 }
+  }
+
   return (
-    <div className="space-y-6">
+    <motion.div
+      variants={containerVariants}
+      initial="hidden"
+      animate="visible"
+      className="space-y-6"
+    >
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <motion.div variants={itemVariants} className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
           <p className="text-gray-600">Welcome back! Here's your portfolio overview.</p>
         </div>
-      </div>
+      </motion.div>
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Total Value</p>
-              <div className="flex items-center space-x-2">
-                {showBalance ? (
-                  <p className="text-2xl font-bold text-gray-900">
-                    ${totalValue.toLocaleString()}
-                  </p>
-                ) : (
-                  <p className="text-2xl font-bold text-gray-400">••••••</p>
-                )}
-                <button
-                  onClick={() => setShowBalance(!showBalance)}
-                  className="text-gray-400 hover:text-gray-600"
+        {[
+          {
+            title: 'Total Value',
+            value: totalValue,
+            icon: DollarSign,
+            color: 'blue',
+            format: 'currency'
+          },
+          {
+            title: 'Cash Balance',
+            value: portfolio?.balance || 0,
+            icon: Activity,
+            color: 'green',
+            format: 'currency'
+          },
+          {
+            title: 'Total Gain/Loss',
+            value: totalGainLoss,
+            icon: totalGainLoss >= 0 ? TrendingUp : TrendingDown,
+            color: totalGainLoss >= 0 ? 'green' : 'red',
+            format: 'currency',
+            percentage: totalGainLossPercent
+          },
+          {
+            title: 'Holdings',
+            value: holdings.length,
+            icon: BarChart3,
+            color: 'purple',
+            format: 'number'
+          }
+        ].map((stat, index) => {
+          const Icon = stat.icon
+          return (
+            <motion.div
+              key={stat.title}
+              variants={itemVariants}
+              whileHover={{ y: -5, scale: 1.02 }}
+              className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-all duration-300"
+            >
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">{stat.title}</p>
+                  <div className="flex items-center space-x-2">
+                    {stat.format === 'currency' ? (
+                      <p className={`text-2xl font-bold ${
+                        stat.title === 'Total Gain/Loss' 
+                          ? totalGainLoss >= 0 ? 'text-green-600' : 'text-red-600'
+                          : 'text-gray-900'
+                      }`}>
+                        {showBalance ? `$${Math.abs(stat.value).toLocaleString()}` : '••••••'}
+                      </p>
+                    ) : (
+                      <p className="text-2xl font-bold text-gray-900">{stat.value}</p>
+                    )}
+                    {stat.title === 'Total Value' && (
+                      <button
+                        onClick={() => setShowBalance(!showBalance)}
+                        className="text-gray-400 hover:text-gray-600"
+                      >
+                        {showBalance ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    )}
+                  </div>
+                  {stat.percentage !== undefined && (
+                    <p className={`text-sm ${totalGainLoss >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      {totalGainLoss >= 0 ? '+' : ''}{showBalance ? stat.percentage.toFixed(2) : '••'}%
+                    </p>
+                  )}
+                </div>
+                <motion.div
+                  whileHover={{ scale: 1.1 }}
+                  className={`p-3 bg-${stat.color}-50 rounded-full`}
                 >
-                  {showBalance ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
+                  <Icon className={`h-6 w-6 text-${stat.color}-600`} />
+                </motion.div>
               </div>
-            </div>
-            <div className="p-3 bg-blue-50 rounded-full">
-              <DollarSign className="h-6 w-6 text-blue-600" />
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Cash Balance</p>
-              <p className="text-2xl font-bold text-gray-900">
-                ${showBalance ? portfolio?.balance.toLocaleString() : '••••••'}
-              </p>
-            </div>
-            <div className="p-3 bg-green-50 rounded-full">
-              <Activity className="h-6 w-6 text-green-600" />
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Total Gain/Loss</p>
-              <div className="flex items-center space-x-1">
-                <p className={`text-2xl font-bold ${totalGainLoss >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                  {showBalance ? `$${Math.abs(totalGainLoss).toLocaleString()}` : '••••••'}
-                </p>
-                {totalGainLoss >= 0 ? (
-                  <TrendingUp className="h-5 w-5 text-green-600" />
-                ) : (
-                  <TrendingDown className="h-5 w-5 text-red-600" />
-                )}
-              </div>
-              <p className={`text-sm ${totalGainLoss >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                {totalGainLoss >= 0 ? '+' : ''}{showBalance ? totalGainLossPercent.toFixed(2) : '••'}%
-              </p>
-            </div>
-            <div className={`p-3 rounded-full ${totalGainLoss >= 0 ? 'bg-green-50' : 'bg-red-50'}`}>
-              {totalGainLoss >= 0 ? (
-                <TrendingUp className="h-6 w-6 text-green-600" />
-              ) : (
-                <TrendingDown className="h-6 w-6 text-red-600" />
-              )}
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Holdings</p>
-              <p className="text-2xl font-bold text-gray-900">{holdings.length}</p>
-              <p className="text-sm text-gray-500">Positions</p>
-            </div>
-            <div className="p-3 bg-purple-50 rounded-full">
-              <BarChart3 className="h-6 w-6 text-purple-600" />
-            </div>
-          </div>
-        </div>
+            </motion.div>
+          )
+        })}
       </div>
 
       {/* Chart and Holdings */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Portfolio Chart */}
-        <div className="bg-white rounded-lg shadow-md p-6">
+        <motion.div
+          variants={itemVariants}
+          whileHover={{ scale: 1.01 }}
+          className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-all duration-300"
+        >
           <h2 className="text-lg font-semibold text-gray-900 mb-4">Portfolio Performance</h2>
           <div className="h-64">
             <Line data={chartData} options={chartOptions} />
           </div>
-        </div>
+        </motion.div>
 
         {/* Top Holdings */}
-        <div className="bg-white rounded-lg shadow-md p-6">
+        <motion.div
+          variants={itemVariants}
+          whileHover={{ scale: 1.01 }}
+          className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-all duration-300"
+        >
           <h2 className="text-lg font-semibold text-gray-900 mb-4">Your Holdings</h2>
           <div className="space-y-4">
             {holdings.length === 0 ? (
@@ -201,12 +238,19 @@ const Dashboard: React.FC = () => {
                 <p className="text-sm text-gray-400">Start trading to see your positions here</p>
               </div>
             ) : (
-              holdings.slice(0, 5).map((holding) => {
+              holdings.slice(0, 5).map((holding, index) => {
                 const gainLoss = holding.shares * (holding.current_price - holding.avg_price)
                 const gainLossPercent = ((holding.current_price - holding.avg_price) / holding.avg_price) * 100
                 
                 return (
-                  <div key={holding.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  <motion.div
+                    key={holding.id}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: index * 0.1 }}
+                    whileHover={{ x: 5 }}
+                    className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+                  >
                     <div className="flex-1">
                       <div className="flex items-center space-x-2">
                         <span className="font-semibold text-gray-900">{holding.symbol}</span>
@@ -227,16 +271,19 @@ const Dashboard: React.FC = () => {
                         </p>
                       </div>
                     </div>
-                  </div>
+                  </motion.div>
                 )
               })
             )}
           </div>
-        </div>
+        </motion.div>
       </div>
 
       {/* Recent Transactions */}
-      <div className="bg-white rounded-lg shadow-md p-6">
+      <motion.div
+        variants={itemVariants}
+        className="bg-white rounded-lg shadow-md p-6"
+      >
         <h2 className="text-lg font-semibold text-gray-900 mb-4">Recent Transactions</h2>
         <div className="overflow-x-auto">
           {transactions.length === 0 ? (
@@ -270,8 +317,14 @@ const Dashboard: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {transactions.slice(0, 10).map((transaction) => (
-                  <tr key={transaction.id}>
+                {transactions.slice(0, 10).map((transaction, index) => (
+                  <motion.tr
+                    key={transaction.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.05 }}
+                    className="hover:bg-gray-50"
+                  >
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div>
                         <div className="text-sm font-medium text-gray-900">{transaction.symbol}</div>
@@ -299,14 +352,14 @@ const Dashboard: React.FC = () => {
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {new Date(transaction.created_at).toLocaleDateString()}
                     </td>
-                  </tr>
+                  </motion.tr>
                 ))}
               </tbody>
             </table>
           )}
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   )
 }
 
