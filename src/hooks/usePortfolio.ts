@@ -38,6 +38,12 @@ export const usePortfolio = () => {
           .single()
         
         portfolioData = newPortfolio
+        
+        if (!portfolioData) {
+            console.error("Portfolio fetch failed and creation failed");
+            return;
+        }
+
       }
 
       setPortfolio(portfolioData)
