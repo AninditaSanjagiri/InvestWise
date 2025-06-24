@@ -23,7 +23,9 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
   const handleSignOut = async () => {
     try {
+      console.log('Logout button clicked')
       await signOut()
+      console.log('Signed out')
       navigate('/login')
     } catch (error) {
       console.error('Error signing out:', error)
