@@ -14,6 +14,7 @@ import Trade from './pages/Trade'
 import Portfolio from './pages/Portfolio'
 import History from './pages/History'
 import Achievements from './pages/Achievements'
+import Goals from './pages/Goals'
 
 function App() {
   return (
@@ -100,6 +101,16 @@ function App() {
                 <ProtectedRoute>
                   <Layout>
                     <Achievements />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/goals"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <Goals />
                   </Layout>
                 </ProtectedRoute>
               }

@@ -15,7 +15,8 @@ import {
   Menu,
   X,
   Play,
-  GamepadIcon
+  GamepadIcon,
+  Target
 } from 'lucide-react'
 
 interface LayoutProps {
@@ -49,6 +50,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     { name: 'Quiz & Games', href: '/quiz', icon: GamepadIcon },
     { name: 'Trade', href: '/trade', icon: TrendingUp },
     { name: 'Portfolio', href: '/portfolio', icon: PieChart },
+    { name: 'Goals', href: '/goals', icon: Target },
     { name: 'History', href: '/history', icon: History },
     { name: 'Achievements', href: '/achievements', icon: Trophy },
   ]
