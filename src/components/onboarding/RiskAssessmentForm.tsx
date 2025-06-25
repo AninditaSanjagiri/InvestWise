@@ -87,7 +87,7 @@ const RiskAssessmentForm: React.FC<RiskAssessmentFormProps> = ({ onComplete }) =
       // Update user profile in Supabase
       const { error } = await supabase
         .from('profiles')
-        .upsert({
+        .update({
           risk_profile: calculatedProfile,
           questionnaire_answers: answers
         })
