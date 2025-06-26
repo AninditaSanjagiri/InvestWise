@@ -15,6 +15,7 @@ import Portfolio from './pages/Portfolio'
 import History from './pages/History'
 import Achievements from './pages/Achievements'
 import Goals from './pages/Goals'
+import Research from './pages/Research'
 
 function App() {
   return (
@@ -111,6 +112,16 @@ function App() {
                 <ProtectedRoute>
                   <Layout>
                     <Goals />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/research"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <Research />
                   </Layout>
                 </ProtectedRoute>
               }

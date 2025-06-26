@@ -16,7 +16,9 @@ import {
   X,
   Play,
   GamepadIcon,
-  Target
+  Target,
+  Search,
+  Calculator
 } from 'lucide-react'
 
 interface LayoutProps {
@@ -49,6 +51,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     { name: 'Videos', href: '/videos', icon: Play },
     { name: 'Quiz & Games', href: '/quiz', icon: GamepadIcon },
     { name: 'Trade', href: '/trade', icon: TrendingUp },
+    { name: 'Research', href: '/research', icon: Search },
     { name: 'Portfolio', href: '/portfolio', icon: PieChart },
     { name: 'Goals', href: '/goals', icon: Target },
     { name: 'History', href: '/history', icon: History },
