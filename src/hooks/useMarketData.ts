@@ -39,7 +39,10 @@ export const useMarketData = (): MarketDataHook => {
     try {
       const response = await fetch('https://geoyxneteubsrpasajll.functions.supabase.co/market-data?symbol=AAPL', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+    'Content-Type': 'application/json',
+    'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdlb3l4bmV0ZXVic3JwYXNhamxsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA2NjExNjYsImV4cCI6MjA2NjIzNzE2Nn0.y_2ixQ_CEDKxascguO8Q4Hoe4N6ublfLqyQx48EiTf4'
+  },
         body: JSON.stringify({ symbols, type: 'quote' })
       })
 
@@ -66,7 +69,10 @@ export const useMarketData = (): MarketDataHook => {
     try {
       const response = await fetch('https://geoyxneteubsrpasajll.functions.supabase.co/market-data?symbol=AAPL', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+    'Content-Type': 'application/json',
+    'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdlb3l4bmV0ZXVic3JwYXNhamxsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA2NjExNjYsImV4cCI6MjA2NjIzNzE2Nn0.y_2ixQ_CEDKxascguO8Q4Hoe4N6ublfLqyQx48EiTf4'
+  },
         body: JSON.stringify({ symbols, type: 'historical', period })
       })
 
@@ -96,7 +102,10 @@ export const useMarketData = (): MarketDataHook => {
     try {
       const response = await fetch('https://geoyxneteubsrpasajll.functions.supabase.co/market-data?symbol=AAPL', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+    'Content-Type': 'application/json',
+    'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdlb3l4bmV0ZXVic3JwYXNhamxsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA2NjExNjYsImV4cCI6MjA2NjIzNzE2Nn0.y_2ixQ_CEDKxascguO8Q4Hoe4N6ublfLqyQx48EiTf4'
+  },
         body: JSON.stringify({ type: 'search', query })
       })
 
