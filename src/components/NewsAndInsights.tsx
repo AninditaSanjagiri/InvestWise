@@ -58,7 +58,7 @@ const NewsAndInsights: React.FC = () => {
     setLoading(true)
     try {
       // Fetch news from edge function
-      const newsResponse = await fetch('/api/news-feed', {
+      const newsResponse = await fetch('https://geoyxneteubsrpasajll.functions.supabase.co/news-feed', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
