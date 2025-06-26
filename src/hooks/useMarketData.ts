@@ -37,7 +37,7 @@ export const useMarketData = (): MarketDataHook => {
     setError(null)
 
     try {
-      const response = await fetch('/api/market-data', {
+      const response = await fetch('https://geoyxneteubsrpasajll.functions.supabase.co/market-data?symbol=AAPL', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ symbols, type: 'quote' })
@@ -64,7 +64,7 @@ export const useMarketData = (): MarketDataHook => {
     setError(null)
 
     try {
-      const response = await fetch('/api/market-data', {
+      const response = await fetch('https://geoyxneteubsrpasajll.functions.supabase.co/market-data?symbol=AAPL', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ symbols, type: 'historical', period })
