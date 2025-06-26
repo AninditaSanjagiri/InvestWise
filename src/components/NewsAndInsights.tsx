@@ -60,7 +60,10 @@ const NewsAndInsights: React.FC = () => {
       // Fetch news from edge function
       const newsResponse = await fetch('https://geoyxneteubsrpasajll.functions.supabase.co/news-feed', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+    'Content-Type': 'application/json',
+    'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdlb3l4bmV0ZXVic3JwYXNhamxsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA2NjExNjYsImV4cCI6MjA2NjIzNzE2Nn0.y_2ixQ_CEDKxascguO8Q4Hoe4N6ublfLqyQx48EiTf4'
+  },
         body: JSON.stringify({ 
           category: selectedCategory === 'all' ? undefined : selectedCategory,
           limit: 20 
