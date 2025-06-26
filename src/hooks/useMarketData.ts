@@ -94,7 +94,7 @@ export const useMarketData = (): MarketDataHook => {
     if (!query.trim()) return []
 
     try {
-      const response = await fetch('/api/market-data', {
+      const response = await fetch('https://geoyxneteubsrpasajll.functions.supabase.co/market-data?symbol=AAPL', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ type: 'search', query })
