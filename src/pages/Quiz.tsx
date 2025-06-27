@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { 
   GamepadIcon, 
@@ -10,8 +10,14 @@ import {
   RotateCcw,
   Star,
   Target,
-  Zap
+  Zap,
+  TrendingUp,
+  TrendingDown,
+  BarChart3
 } from 'lucide-react'
+import { useAuth } from '../contexts/AuthContext'
+import { supabase } from '../lib/supabase'
+import toast from 'react-hot-toast'
 
 interface QuizQuestion {
   id: string
@@ -35,12 +41,30 @@ interface Game {
   id: string
   title: string
   description: string
-  type: 'memory' | 'matching' | 'simulation'
+  type: 'memory' | 'matching' | 'simulation' | 'prediction'
   difficulty: 'Easy' | 'Medium' | 'Hard'
   icon: React.ComponentType<any>
 }
 
+interface GameScore {
+  id: string
+  game_type: string
+  score: number
+  total_attempts: number
+  correct_predictions: number
+  best_streak: number
+}
+
+interface PredictionGame {
+  symbol: string
+  currentPrice: number
+  prediction: 'up' | 'down' | null
+  result: 'correct' | 'incorrect' | null
+  newPrice?: number
+}
+
 const QuizAndGames: React.FC = () => {
+  const { user } = useAuth()
   const [activeTab, setActiveTab] = useState<'quiz' | 'games'>('quiz')
   const [selectedQuiz, setSelectedQuiz] = useState<Quiz | null>(null)
   const [currentQuestion, setCurrentQuestion] = useState(0)
@@ -49,6 +73,137 @@ const QuizAndGames: React.FC = () => {
   const [showResult, setShowResult] = useState(false)
   const [quizCompleted, setQuizCompleted] = useState(false)
   const [timeLeft, setTimeLeft] = useState(0)
+  
+  // Game states
+  const [gameScores, setGameScores] = useState<GameScore[]>([])
+  const [predictionGame, setPredictionGame] = useState<PredictionGame>({
+    symbol: '',
+    currentPrice: 0,
+    prediction: null,
+    result: null
+  })
+  const [gameActive, setGameActive] = useState(false)
+  const [currentStreak, setCurrentStreak] = useState(0)
+
+  useEffect(() => {
+    if (user) {
+      fetchGameScores()
+    }
+  }, [user])
+
+  const fetchGameScores = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('game_scores')
+        .select('*')
+        .eq('user_id', user!.id)
+
+      if (error) throw error
+      setGameScores(data || [])
+    } catch (error) {
+      console.error('Error fetching game scores:', error)
+    }
+  }
+
+  const startPredictionGame = async () => {
+    try {
+      // Get a random stock from investment options
+      const { data, error } = await supabase
+        .from('investment_options')
+        .select('symbol, current_price')
+        .eq('type', 'Stock')
+        .limit(1)
+        .order('id', { ascending: false })
+
+      if (error) throw error
+      
+      if (data && data.length > 0) {
+        const stock = data[0]
+        setPredictionGame({
+          symbol: stock.symbol,
+          currentPrice: stock.current_price,
+          prediction: null,
+          result: null
+        })
+        setGameActive(true)
+      }
+    } catch (error) {
+      console.error('Error starting prediction game:', error)
+      toast.error('Failed to start game')
+    }
+  }
+
+  const makePrediction = async (prediction: 'up' | 'down') => {
+    setPredictionGame(prev => ({ ...prev, prediction }))
+    
+    // Simulate price change (random for demo)
+    const changePercent = (Math.random() - 0.5) * 0.1 // -5% to +5%
+    const newPrice = predictionGame.currentPrice * (1 + changePercent)
+    const actualDirection = newPrice > predictionGame.currentPrice ? 'up' : 'down'
+    const isCorrect = prediction === actualDirection
+
+    setPredictionGame(prev => ({
+      ...prev,
+      newPrice,
+      result: isCorrect ? 'correct' : 'incorrect'
+    }))
+
+    // Update streak
+    if (isCorrect) {
+      setCurrentStreak(prev => prev + 1)
+    } else {
+      setCurrentStreak(0)
+    }
+
+    // Update game score in database
+    try {
+      const existingScore = gameScores.find(gs => gs.game_type === 'market_prediction')
+      
+      if (existingScore) {
+        const newScore = isCorrect ? existingScore.score + 10 : existingScore.score
+        const newCorrect = isCorrect ? existingScore.correct_predictions + 1 : existingScore.correct_predictions
+        const newBestStreak = Math.max(existingScore.best_streak, currentStreak)
+
+        await supabase
+          .from('game_scores')
+          .update({
+            score: newScore,
+            total_attempts: existingScore.total_attempts + 1,
+            correct_predictions: newCorrect,
+            best_streak: newBestStreak,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', existingScore.id)
+      } else {
+        await supabase
+          .from('game_scores')
+          .insert({
+            user_id: user!.id,
+            game_type: 'market_prediction',
+            score: isCorrect ? 10 : 0,
+            total_attempts: 1,
+            correct_predictions: isCorrect ? 1 : 0,
+            best_streak: isCorrect ? 1 : 0
+          })
+      }
+
+      fetchGameScores()
+      
+      if (isCorrect) {
+        toast.success(`Correct! +10 points. Streak: ${currentStreak + 1}`)
+      } else {
+        toast.error('Incorrect prediction. Streak reset.')
+      }
+
+    } catch (error) {
+      console.error('Error updating game score:', error)
+    }
+
+    // Auto start next round after 3 seconds
+    setTimeout(() => {
+      startPredictionGame()
+    }, 3000)
+  }
 
   // Mock quiz data
   const quizzes: Quiz[] = [
@@ -58,7 +213,7 @@ const QuizAndGames: React.FC = () => {
       description: 'Test your knowledge of fundamental stock market concepts',
       difficulty: 'Beginner',
       category: 'Fundamentals',
-      timeLimit: 300, // 5 minutes
+      timeLimit: 300,
       questions: [
         {
           id: '1',
@@ -89,7 +244,7 @@ const QuizAndGames: React.FC = () => {
       description: 'Learn about different approaches to investing',
       difficulty: 'Intermediate',
       category: 'Strategy',
-      timeLimit: 600, // 10 minutes
+      timeLimit: 600,
       questions: [
         {
           id: '1',
@@ -109,10 +264,17 @@ const QuizAndGames: React.FC = () => {
     }
   ]
 
-  // Mock games data
   const games: Game[] = [
     {
       id: '1',
+      title: 'Market Prediction Game',
+      description: 'Predict if stock prices will go up or down',
+      type: 'prediction',
+      difficulty: 'Easy',
+      icon: TrendingUp
+    },
+    {
+      id: '2',
       title: 'Stock Symbol Memory',
       description: 'Match company names with their stock symbols',
       type: 'memory',
@@ -120,20 +282,12 @@ const QuizAndGames: React.FC = () => {
       icon: Target
     },
     {
-      id: '2',
+      id: '3',
       title: 'Portfolio Builder',
       description: 'Build a balanced portfolio within budget constraints',
       type: 'simulation',
       difficulty: 'Medium',
       icon: Trophy
-    },
-    {
-      id: '3',
-      title: 'Market Trend Predictor',
-      description: 'Predict market movements based on news and data',
-      type: 'simulation',
-      difficulty: 'Hard',
-      icon: Zap
     }
   ]
 
@@ -197,6 +351,10 @@ const QuizAndGames: React.FC = () => {
     }
   }
 
+  const getGameScore = (gameType: string) => {
+    return gameScores.find(gs => gs.game_type === gameType)
+  }
+
   if (selectedQuiz && !quizCompleted) {
     const currentQ = selectedQuiz.questions[currentQuestion]
     const progress = ((currentQuestion + 1) / selectedQuiz.questions.length) * 100
@@ -207,7 +365,7 @@ const QuizAndGames: React.FC = () => {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-white rounded-lg shadow-md p-6"
+          className="bg-white rounded-xl shadow-lg p-6"
         >
           <div className="flex items-center justify-between mb-4">
             <div>
@@ -223,11 +381,11 @@ const QuizAndGames: React.FC = () => {
           </div>
           
           {/* Progress Bar */}
-          <div className="w-full bg-gray-200 rounded-full h-2">
+          <div className="w-full bg-gray-200 rounded-full h-3">
             <motion.div
               initial={{ width: 0 }}
               animate={{ width: `${progress}%` }}
-              className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+              className="bg-gradient-to-r from-blue-500 to-purple-500 h-3 rounded-full transition-all duration-300"
             />
           </div>
         </motion.div>
@@ -237,7 +395,7 @@ const QuizAndGames: React.FC = () => {
           key={currentQuestion}
           initial={{ opacity: 0, x: 50 }}
           animate={{ opacity: 1, x: 0 }}
-          className="bg-white rounded-lg shadow-md p-8"
+          className="bg-white rounded-xl shadow-lg p-8"
         >
           <h2 className="text-xl font-semibold text-gray-900 mb-6">{currentQ.question}</h2>
           
@@ -249,7 +407,7 @@ const QuizAndGames: React.FC = () => {
                 whileTap={{ scale: 0.98 }}
                 onClick={() => handleAnswerSelect(index)}
                 disabled={showResult}
-                className={`w-full p-4 text-left rounded-lg border-2 transition-all ${
+                className={`w-full p-4 text-left rounded-xl border-2 transition-all ${
                   selectedAnswer === index
                     ? showResult
                       ? index === currentQ.correctAnswer
@@ -311,7 +469,7 @@ const QuizAndGames: React.FC = () => {
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="bg-white rounded-lg shadow-md p-8 text-center"
+          className="bg-white rounded-xl shadow-lg p-8 text-center"
         >
           <motion.div
             initial={{ scale: 0 }}
@@ -375,7 +533,7 @@ const QuizAndGames: React.FC = () => {
       </motion.div>
 
       {/* Tabs */}
-      <div className="bg-white rounded-lg shadow-md p-2">
+      <div className="bg-white rounded-xl shadow-lg p-2">
         <div className="flex space-x-2">
           {[
             { key: 'quiz', label: 'Quizzes', icon: Trophy },
@@ -390,7 +548,7 @@ const QuizAndGames: React.FC = () => {
                 onClick={() => setActiveTab(tab.key as 'quiz' | 'games')}
                 className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-lg font-medium transition-all ${
                   activeTab === tab.key
-                    ? 'bg-blue-600 text-white'
+                    ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg'
                     : 'text-gray-600 hover:bg-gray-50'
                 }`}
               >
@@ -418,7 +576,7 @@ const QuizAndGames: React.FC = () => {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.1 }}
                 whileHover={{ y: -5 }}
-                className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-all duration-300"
+                className="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-all duration-300"
               >
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex items-center space-x-2">
@@ -464,63 +622,161 @@ const QuizAndGames: React.FC = () => {
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -20 }}
-            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+            className="space-y-6"
           >
-            {games.map((game, index) => {
-              const Icon = game.icon
-              return (
-                <motion.div
-                  key={game.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.1 }}
-                  whileHover={{ y: -5 }}
-                  className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-all duration-300"
-                >
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="p-3 bg-gradient-to-r from-purple-100 to-pink-100 rounded-full">
-                      <Icon className="h-6 w-6 text-purple-600" />
+            {/* Market Prediction Game */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-white rounded-xl shadow-lg p-6"
+            >
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h3 className="text-xl font-semibold text-gray-900">Market Prediction Game</h3>
+                  <p className="text-gray-600">Predict if stock prices will go up or down</p>
+                </div>
+                <TrendingUp className="h-8 w-8 text-blue-600" />
+              </div>
+
+              {/* Game Stats */}
+              {(() => {
+                const gameScore = getGameScore('market_prediction')
+                return gameScore ? (
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                    <div className="text-center p-3 bg-blue-50 rounded-lg">
+                      <p className="text-sm text-gray-600">Score</p>
+                      <p className="text-xl font-bold text-blue-600">{gameScore.score}</p>
                     </div>
-                    <span className={`text-xs font-medium px-2 py-1 rounded-full ${getDifficultyColor(game.difficulty)}`}>
-                      {game.difficulty}
-                    </span>
+                    <div className="text-center p-3 bg-green-50 rounded-lg">
+                      <p className="text-sm text-gray-600">Correct</p>
+                      <p className="text-xl font-bold text-green-600">{gameScore.correct_predictions}</p>
+                    </div>
+                    <div className="text-center p-3 bg-purple-50 rounded-lg">
+                      <p className="text-sm text-gray-600">Total</p>
+                      <p className="text-xl font-bold text-purple-600">{gameScore.total_attempts}</p>
+                    </div>
+                    <div className="text-center p-3 bg-yellow-50 rounded-lg">
+                      <p className="text-sm text-gray-600">Best Streak</p>
+                      <p className="text-xl font-bold text-yellow-600">{gameScore.best_streak}</p>
+                    </div>
+                  </div>
+                ) : null
+              })()}
+
+              {/* Game Interface */}
+              {gameActive && predictionGame.symbol ? (
+                <div className="space-y-6">
+                  <div className="text-center p-6 bg-gray-50 rounded-lg">
+                    <h4 className="text-2xl font-bold text-gray-900 mb-2">{predictionGame.symbol}</h4>
+                    <p className="text-3xl font-bold text-blue-600 mb-2">
+                      ${predictionGame.currentPrice.toFixed(2)}
+                    </p>
+                    <p className="text-gray-600">Current Price</p>
                   </div>
 
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">{game.title}</h3>
-                  <p className="text-gray-600 mb-4">{game.description}</p>
-
+                  {predictionGame.result ? (
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.9 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      className={`text-center p-6 rounded-lg ${
+                        predictionGame.result === 'correct' ? 'bg-green-50' : 'bg-red-50'
+                      }`}
+                    >
+                      <div className={`text-4xl mb-2 ${
+                        predictionGame.result === 'correct' ? 'text-green-600' : 'text-red-600'
+                      }`}>
+                        {predictionGame.result === 'correct' ? '🎉' : '😞'}
+                      </div>
+                      <h4 className={`text-xl font-bold mb-2 ${
+                        predictionGame.result === 'correct' ? 'text-green-600' : 'text-red-600'
+                      }`}>
+                        {predictionGame.result === 'correct' ? 'Correct!' : 'Incorrect!'}
+                      </h4>
+                      <p className="text-gray-700">
+                        New Price: ${predictionGame.newPrice?.toFixed(2)}
+                      </p>
+                      <p className="text-sm text-gray-600 mt-2">
+                        Starting next round in 3 seconds...
+                      </p>
+                    </motion.div>
+                  ) : (
+                    <div className="flex gap-4">
+                      <motion.button
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => makePrediction('up')}
+                        className="flex-1 flex items-center justify-center gap-2 py-4 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition-colors"
+                      >
+                        <TrendingUp className="h-5 w-5" />
+                        Price Will Go UP
+                      </motion.button>
+                      <motion.button
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => makePrediction('down')}
+                        className="flex-1 flex items-center justify-center gap-2 py-4 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition-colors"
+                      >
+                        <TrendingDown className="h-5 w-5" />
+                        Price Will Go DOWN
+                      </motion.button>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="text-center">
                   <motion.button
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                    className="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white py-3 px-4 rounded-lg font-medium hover:from-purple-700 hover:to-pink-700 transition-all duration-200 flex items-center justify-center gap-2"
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={startPredictionGame}
+                    className="px-8 py-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg font-medium hover:from-blue-700 hover:to-purple-700 transition-all duration-200 flex items-center gap-2 mx-auto"
                   >
-                    <Play className="h-4 w-4" />
-                    Play Game
+                    <Play className="h-5 w-5" />
+                    Start Prediction Game
                   </motion.button>
-                </motion.div>
-              )
-            })}
+                </div>
+              )}
+            </motion.div>
+
+            {/* Other Games */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {games.filter(g => g.id !== '1').map((game, index) => {
+                const Icon = game.icon
+                return (
+                  <motion.div
+                    key={game.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.1 }}
+                    whileHover={{ y: -5 }}
+                    className="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-all duration-300"
+                  >
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="p-3 bg-gradient-to-r from-purple-100 to-pink-100 rounded-full">
+                        <Icon className="h-6 w-6 text-purple-600" />
+                      </div>
+                      <span className={`text-xs font-medium px-2 py-1 rounded-full ${getDifficultyColor(game.difficulty)}`}>
+                        {game.difficulty}
+                      </span>
+                    </div>
+
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">{game.title}</h3>
+                    <p className="text-gray-600 mb-4">{game.description}</p>
+
+                    <motion.button
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      className="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white py-3 px-4 rounded-lg font-medium hover:from-purple-700 hover:to-pink-700 transition-all duration-200 flex items-center justify-center gap-2"
+                    >
+                      <Play className="h-4 w-4" />
+                      Coming Soon
+                    </motion.button>
+                  </motion.div>
+                )
+              })}
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
-
-      {/* Coming Soon */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg p-8 text-center"
-      >
-        <Star className="h-12 w-12 text-purple-600 mx-auto mb-4" />
-        <h3 className="text-xl font-semibold text-gray-900 mb-2">More Content Coming Soon!</h3>
-        <p className="text-gray-600 mb-4">
-          We're developing more interactive quizzes and games to make learning investing fun and engaging.
-        </p>
-        <div className="flex justify-center space-x-6 text-sm text-gray-500">
-          <span>• Multiplayer Challenges</span>
-          <span>• Leaderboards</span>
-          <span>• Achievement Badges</span>
-        </div>
-      </motion.div>
     </div>
   )
 }

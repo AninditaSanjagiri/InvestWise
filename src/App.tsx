@@ -16,12 +16,14 @@ import History from './pages/History'
 import Achievements from './pages/Achievements'
 import Goals from './pages/Goals'
 import Research from './pages/Research'
+import Bank from './pages/Bank'
+import Calculators from './pages/Calculators'
 
 function App() {
   return (
     <AuthProvider>
       <Router>
-        <div className="min-h-screen bg-gray-50">
+        <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50">
           <Routes>
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
@@ -126,6 +128,26 @@ function App() {
                 </ProtectedRoute>
               }
             />
+            <Route
+              path="/bank"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <Bank />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/calculators"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <Calculators />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
           </Routes>
         </div>
         <Toaster
@@ -135,6 +157,10 @@ function App() {
             style: {
               background: '#363636',
               color: '#fff',
+              borderRadius: '12px',
+              padding: '16px',
+              fontSize: '14px',
+              fontWeight: '500',
             },
             success: {
               duration: 3000,
