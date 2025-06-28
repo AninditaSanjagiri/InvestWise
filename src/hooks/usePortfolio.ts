@@ -40,7 +40,7 @@ export const usePortfolio = () => {
         console.error('User error:', userError)
         // If user doesn't exist in users table, create them
         if (userError.code === 'PGRST116') {
-          await supabase
+          const { error: insertError } = await supabase
             .from('users')
             .insert({
               id: user.id,
@@ -48,6 +48,10 @@ export const usePortfolio = () => {
               savings_balance: 0,
               onboarding_completed: false
             })
+          
+          if (insertError) {
+            console.error('Error creating user:', insertError)
+          }
           
           setUserBalances({ cash_balance: 10000, savings_balance: 0 })
         } else {
@@ -59,26 +63,32 @@ export const usePortfolio = () => {
       }
 
       // Get or create portfolio
-      let { data: portfolioData } = await supabase
+      let { data: portfolioData, error: portfolioError } = await supabase
         .from('portfolios')
         .select('*')
         .eq('user_id', user.id)
         .single()
 
-      if (!portfolioData) {
+      if (portfolioError && portfolioError.code === 'PGRST116') {
         // Create initial portfolio
         const { data: newPortfolio, error: createError } = await supabase
           .from('portfolios')
           .insert({
             user_id: user.id,
-            balance: userBalances.cash_balance,
-            total_value: userBalances.cash_balance + userBalances.savings_balance
+            balance: userBalances.cash_balance || 10000,
+            total_value: (userBalances.cash_balance || 10000) + (userBalances.savings_balance || 0)
           })
           .select()
           .single()
         
-        if (createError) throw createError
+        if (createError) {
+          console.error('Error creating portfolio:', createError)
+          throw createError
+        }
         portfolioData = newPortfolio
+      } else if (portfolioError) {
+        console.error('Portfolio error:', portfolioError)
+        throw portfolioError
       }
 
       setPortfolio(portfolioData)
@@ -219,18 +229,22 @@ export const usePortfolio = () => {
 
       // Update user's cash balance
       const newCashBalance = userBalances.cash_balance - total
-      await supabase
+      const { error: userUpdateError } = await supabase
         .from('users')
         .update({ cash_balance: newCashBalance })
         .eq('id', user.id)
 
+      if (userUpdateError) throw userUpdateError
+
       // Update portfolio balance
-      await supabase
+      const { error: portfolioUpdateError } = await supabase
         .from('portfolios')
         .update({ 
           balance: newCashBalance
         })
         .eq('id', portfolio.id)
+
+      if (portfolioUpdateError) throw portfolioUpdateError
 
       // Create or update holding
       const existingHolding = holdings.find(h => h.symbol === symbol)
@@ -239,7 +253,7 @@ export const usePortfolio = () => {
         const newShares = existingHolding.shares + shares
         const newAvgPrice = ((existingHolding.shares * existingHolding.avg_price) + total) / newShares
 
-        await supabase
+        const { error: holdingUpdateError } = await supabase
           .from('holdings')
           .update({
             shares: newShares,
@@ -247,6 +261,8 @@ export const usePortfolio = () => {
             current_price: price
           })
           .eq('id', existingHolding.id)
+
+        if (holdingUpdateError) throw holdingUpdateError
       } else {
         // Get the investment option to ensure we have the correct name
         const { data: investmentOption } = await supabase
@@ -255,7 +271,7 @@ export const usePortfolio = () => {
           .eq('symbol', symbol)
           .single()
 
-        await supabase
+        const { error: holdingInsertError } = await supabase
           .from('holdings')
           .insert({
             portfolio_id: portfolio.id,
@@ -265,10 +281,12 @@ export const usePortfolio = () => {
             avg_price: price,
             current_price: price
           })
+
+        if (holdingInsertError) throw holdingInsertError
       }
 
       // Record transaction
-      await supabase
+      const { error: transactionError } = await supabase
         .from('transactions')
         .insert({
           portfolio_id: portfolio.id,
@@ -279,6 +297,8 @@ export const usePortfolio = () => {
           price,
           total
         })
+
+      if (transactionError) throw transactionError
 
       toast.dismiss(loadingToast)
       toast.success(`Successfully bought ${shares} shares of ${symbol} at $${price.toFixed(2)}`)
@@ -308,39 +328,47 @@ export const usePortfolio = () => {
 
       // Update user's cash balance
       const newCashBalance = userBalances.cash_balance + total
-      await supabase
+      const { error: userUpdateError } = await supabase
         .from('users')
         .update({ cash_balance: newCashBalance })
         .eq('id', user.id)
 
+      if (userUpdateError) throw userUpdateError
+
       // Update portfolio balance
-      await supabase
+      const { error: portfolioUpdateError } = await supabase
         .from('portfolios')
         .update({ 
           balance: newCashBalance
         })
         .eq('id', portfolio.id)
 
+      if (portfolioUpdateError) throw portfolioUpdateError
+
       // Update holding
       const newShares = holding.shares - shares
       
       if (newShares === 0) {
-        await supabase
+        const { error: holdingDeleteError } = await supabase
           .from('holdings')
           .delete()
           .eq('id', holding.id)
+
+        if (holdingDeleteError) throw holdingDeleteError
       } else {
-        await supabase
+        const { error: holdingUpdateError } = await supabase
           .from('holdings')
           .update({
             shares: newShares,
             current_price: price
           })
           .eq('id', holding.id)
+
+        if (holdingUpdateError) throw holdingUpdateError
       }
 
       // Record transaction
-      await supabase
+      const { error: transactionError } = await supabase
         .from('transactions')
         .insert({
           portfolio_id: portfolio.id,
@@ -351,6 +379,8 @@ export const usePortfolio = () => {
           price,
           total
         })
+
+      if (transactionError) throw transactionError
 
       toast.dismiss(loadingToast)
       toast.success(`Successfully sold ${shares} shares of ${symbol} at $${price.toFixed(2)}`)
