@@ -19,7 +19,8 @@ import {
   Target,
   Search,
   Calculator,
-  Banknote
+  Banknote,
+  ChevronDown
 } from 'lucide-react'
 
 interface LayoutProps {
@@ -32,6 +33,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const navigate = useNavigate()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
+  const [moreMenuOpen, setMoreMenuOpen] = useState(false)
 
   const handleSignOut = async () => {
     try {
@@ -60,6 +62,10 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     { name: 'History', href: '/history', icon: History },
     { name: 'Achievements', href: '/achievements', icon: Trophy },
   ]
+
+  // Split navigation for desktop: first 6 items in main nav, rest in "More" menu
+  const mainNavItems = navigation.slice(0, 6)
+  const moreNavItems = navigation.slice(6)
 
   if (!user) {
     return <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50">{children}</div>
@@ -106,7 +112,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
           {/* Center: Desktop Navigation (Hidden on Mobile) */}
           <div className="hidden lg:flex items-center space-x-1">
-            {navigation.slice(0, 6).map((item) => {
+            {mainNavItems.map((item) => {
               const Icon = item.icon
               const isActive = location.pathname === item.href
               
@@ -131,12 +137,48 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             {/* More Menu for Additional Items */}
             <div className="relative">
               <button
-                onClick={() => setSidebarOpen(true)}
+                onClick={() => setMoreMenuOpen(!moreMenuOpen)}
                 className="flex items-center px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 rounded-lg transition-all"
               >
                 <Menu className="h-4 w-4 mr-2" />
                 More
+                <ChevronDown className={`h-4 w-4 ml-1 transition-transform ${moreMenuOpen ? 'rotate-180' : ''}`} />
               </button>
+
+              {/* More Dropdown Menu */}
+              <AnimatePresence>
+                {moreMenuOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                    className="absolute top-full right-0 mt-2 w-56 bg-white rounded-xl shadow-xl border border-gray-200 py-2 z-50"
+                  >
+                    {moreNavItems.map((item) => {
+                      const Icon = item.icon
+                      const isActive = location.pathname === item.href
+                      
+                      return (
+                        <Link
+                          key={item.name}
+                          to={item.href}
+                          onClick={() => setMoreMenuOpen(false)}
+                          className={`flex items-center px-4 py-3 text-sm font-medium transition-all duration-200 ${
+                            isActive
+                              ? 'bg-gradient-to-r from-blue-50 to-purple-50 text-blue-700 border-r-2 border-blue-600'
+                              : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                          }`}
+                        >
+                          <Icon className={`h-4 w-4 mr-3 ${
+                            isActive ? 'text-blue-600' : 'text-gray-500'
+                          }`} />
+                          {item.name}
+                        </Link>
+                      )
+                    })}
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
           </div>
 
@@ -310,6 +352,20 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           </main>
         </div>
       </div>
+
+      {/* Click outside handlers */}
+      {moreMenuOpen && (
+        <div 
+          className="fixed inset-0 z-30" 
+          onClick={() => setMoreMenuOpen(false)}
+        />
+      )}
+      {profileOpen && (
+        <div 
+          className="fixed inset-0 z-30" 
+          onClick={() => setProfileOpen(false)}
+        />
+      )}
     </div>
   )
 }
