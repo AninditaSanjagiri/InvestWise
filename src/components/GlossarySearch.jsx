@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { Search, Lightbulb, BookOpen, Loader2, AlertCircle } from 'lucide-react'
+import { useRealTimePortfolio } from '../hooks/useRealTimePortfolio'
 
 const GlossarySearch = () => {
   const [term, setTerm] = useState('')
@@ -8,6 +9,7 @@ const GlossarySearch = () => {
   const [definition, setDefinition] = useState('')
   const [analogy, setAnalogy] = useState('')
   const [hasSearched, setHasSearched] = useState(false)
+  const { recordLearningActivity } = useRealTimePortfolio()
 
   const handleSearch = async () => {
     if (!term.trim()) {
@@ -39,6 +41,10 @@ const GlossarySearch = () => {
       setDefinition(data.definition)
       setAnalogy(data.analogy)
       setHasSearched(true)
+
+      // Record learning activity for achievements
+      await recordLearningActivity('term_searched', 5)
+
     } catch (err) {
       console.error('Error fetching term explanation:', err)
       setError(err.message || 'Failed to get explanation. Please try again.')
@@ -130,12 +136,17 @@ const GlossarySearch = () => {
             <h3 className="text-lg font-semibold text-gray-900 capitalize">
               "{term}"
             </h3>
-            <button
-              onClick={clearResults}
-              className="text-sm text-gray-500 hover:text-gray-700 transition-colors"
-            >
-              Clear
-            </button>
+            <div className="flex items-center space-x-2">
+              <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">
+                +5 Learning Points
+              </span>
+              <button
+                onClick={clearResults}
+                className="text-sm text-gray-500 hover:text-gray-700 transition-colors"
+              >
+                Clear
+              </button>
+            </div>
           </div>
 
           {/* Definition */}
