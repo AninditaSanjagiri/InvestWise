@@ -10,10 +10,14 @@ export const usePortfolio = () => {
   const [holdings, setHoldings] = useState<Holding[]>([])
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [loading, setLoading] = useState(true)
+  const [userBalances, setUserBalances] = useState({ cash_balance: 0, savings_balance: 0 })
 
   useEffect(() => {
     if (user) {
       fetchPortfolioData()
+      // Set up real-time updates
+      const interval = setInterval(fetchPortfolioData, 30000)
+      return () => clearInterval(interval)
     }
   }, [user])
 
@@ -21,6 +25,18 @@ export const usePortfolio = () => {
     try {
       setLoading(true)
       
+      // Get user balances first
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('cash_balance, savings_balance')
+        .eq('id', user!.id)
+        .single()
+
+      if (userError) throw userError
+      
+      const balances = userData || { cash_balance: 10000, savings_balance: 0 }
+      setUserBalances(balances)
+
       // Get or create portfolio
       let { data: portfolioData } = await supabase
         .from('portfolios')
@@ -29,34 +45,51 @@ export const usePortfolio = () => {
         .single()
 
       if (!portfolioData) {
-        // Create initial portfolio with $10,000
+        // Create initial portfolio
         const { data: newPortfolio } = await supabase
           .from('portfolios')
           .insert({
             user_id: user!.id,
-            balance: 10000,
-            total_value: 10000
+            balance: balances.cash_balance,
+            total_value: balances.cash_balance + balances.savings_balance
           })
           .select()
           .single()
         
         portfolioData = newPortfolio
+      } else {
+        // Update portfolio balance to match user's cash balance
+        await supabase
+          .from('portfolios')
+          .update({ 
+            balance: balances.cash_balance,
+            total_value: balances.cash_balance + balances.savings_balance
+          })
+          .eq('id', portfolioData.id)
         
-        if (!portfolioData) {
-          console.error("Portfolio fetch failed and creation failed")
-          return
-        }
+        portfolioData.balance = balances.cash_balance
+        portfolioData.total_value = balances.cash_balance + balances.savings_balance
       }
 
       setPortfolio(portfolioData)
 
-      // Get holdings
+      // Get holdings with current prices from investment_options
       const { data: holdingsData } = await supabase
         .from('holdings')
-        .select('*')
+        .select(`
+          *,
+          investment_options!inner(current_price, price_change, price_change_percent, name)
+        `)
         .eq('portfolio_id', portfolioData.id)
 
-      setHoldings(holdingsData || [])
+      // Calculate real-time values for holdings
+      const updatedHoldings = holdingsData?.map(holding => ({
+        ...holding,
+        current_price: holding.investment_options.current_price,
+        company_name: holding.investment_options.name
+      })) || []
+
+      setHoldings(updatedHoldings)
 
       // Get recent transactions
       const { data: transactionsData } = await supabase
@@ -67,6 +100,7 @@ export const usePortfolio = () => {
         .limit(50)
 
       setTransactions(transactionsData || [])
+
     } catch (error) {
       console.error('Error fetching portfolio:', error)
       toast.error('Failed to load portfolio data')
@@ -80,7 +114,7 @@ export const usePortfolio = () => {
 
     const total = shares * price
 
-    if (portfolio.balance < total) {
+    if (userBalances.cash_balance < total) {
       toast.error('Insufficient funds')
       throw new Error('Insufficient funds')
     }
@@ -88,11 +122,18 @@ export const usePortfolio = () => {
     try {
       const loadingToast = toast.loading('Processing buy order...')
 
+      // Update user's cash balance
+      const newCashBalance = userBalances.cash_balance - total
+      await supabase
+        .from('users')
+        .update({ cash_balance: newCashBalance })
+        .eq('id', user!.id)
+
       // Update portfolio balance
       await supabase
         .from('portfolios')
         .update({ 
-          balance: portfolio.balance - total,
+          balance: newCashBalance,
           total_value: portfolio.total_value
         })
         .eq('id', portfolio.id)
@@ -164,11 +205,18 @@ export const usePortfolio = () => {
     try {
       const loadingToast = toast.loading('Processing sell order...')
 
+      // Update user's cash balance
+      const newCashBalance = userBalances.cash_balance + total
+      await supabase
+        .from('users')
+        .update({ cash_balance: newCashBalance })
+        .eq('id', user!.id)
+
       // Update portfolio balance
       await supabase
         .from('portfolios')
         .update({ 
-          balance: portfolio.balance + total,
+          balance: newCashBalance,
           total_value: portfolio.total_value
         })
         .eq('id', portfolio.id)
@@ -216,11 +264,33 @@ export const usePortfolio = () => {
     }
   }
 
+  // Calculate real-time portfolio metrics
+  const totalHoldingsValue = holdings.reduce((sum, holding) => 
+    sum + (holding.shares * holding.current_price), 0
+  )
+  
+  const totalValue = userBalances.cash_balance + userBalances.savings_balance + totalHoldingsValue
+  const totalGainLoss = totalValue - 10000 // Initial amount
+  const totalGainLossPercent = ((totalGainLoss / 10000) * 100)
+
   return {
-    portfolio,
-    holdings,
+    portfolio: portfolio ? {
+      ...portfolio,
+      balance: userBalances.cash_balance,
+      total_value: totalValue
+    } : null,
+    holdings: holdings.map(holding => ({
+      ...holding,
+      current_value: holding.shares * holding.current_price,
+      gain_loss: holding.shares * (holding.current_price - holding.avg_price),
+      gain_loss_percent: ((holding.current_price - holding.avg_price) / holding.avg_price) * 100
+    })),
     transactions,
     loading,
+    userBalances,
+    totalValue,
+    totalGainLoss,
+    totalGainLossPercent,
     buyStock,
     sellStock,
     refreshData: fetchPortfolioData

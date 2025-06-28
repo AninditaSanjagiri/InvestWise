@@ -25,7 +25,7 @@ interface InvestmentOption {
 
 const Trade: React.FC = () => {
   const { user } = useAuth()
-  const { portfolio, holdings, buyStock, sellStock } = usePortfolio()
+  const { portfolio, holdings, buyStock, sellStock, userBalances } = usePortfolio()
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedStock, setSelectedStock] = useState<InvestmentOption | null>(null)
   const [tradeType, setTradeType] = useState<'buy' | 'sell'>('buy')
@@ -111,9 +111,6 @@ const Trade: React.FC = () => {
     // Conservative users shouldn't buy aggressive investments
     if (userRisk === 'conservative' && investmentRisk === 'aggressive') return false
     
-    // Moderate users can buy anything except aggressive (optional check)
-    // if (userRisk === 'moderate' && investmentRisk === 'aggressive') return false
-    
     return true
   }
 
@@ -170,10 +167,10 @@ const Trade: React.FC = () => {
   }
 
   const getMaxShares = () => {
-    if (!selectedStock || !portfolio) return 0
+    if (!selectedStock) return 0
     
     if (tradeType === 'buy') {
-      return Math.floor(portfolio.balance / selectedStock.current_price)
+      return Math.floor(userBalances.cash_balance / selectedStock.current_price)
     } else {
       const holding = holdings.find(h => h.symbol === selectedStock.symbol)
       return holding ? holding.shares : 0
@@ -226,7 +223,7 @@ const Trade: React.FC = () => {
         <div className="text-right">
           <p className="text-sm text-gray-600">Available Cash</p>
           <p className="text-2xl font-bold text-green-600">
-            ${portfolio?.balance.toLocaleString() || '0'}
+            ${userBalances.cash_balance.toLocaleString()}
           </p>
         </div>
       </motion.div>
@@ -537,7 +534,7 @@ const Trade: React.FC = () => {
                     </div>
                     <div className="text-right">
                       <p className="text-sm font-medium text-gray-900">
-                        ${(holding.shares * holding.current_price).toLocaleString()}
+                        ${holding.current_value.toLocaleString()}
                       </p>
                       <p className="text-xs text-gray-500">
                         @${holding.current_price.toFixed(2)}
