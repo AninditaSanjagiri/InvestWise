@@ -15,8 +15,10 @@ export const usePortfolio = () => {
   useEffect(() => {
     if (user) {
       fetchPortfolioData()
-      // Set up real-time updates
-      const interval = setInterval(fetchPortfolioData, 30000)
+      // Set up real-time updates every 30 seconds
+      const interval = setInterval(() => {
+        updateRealTimePrices()
+      }, 30000)
       return () => clearInterval(interval)
     }
   }, [user])
@@ -86,7 +88,10 @@ export const usePortfolio = () => {
       const updatedHoldings = holdingsData?.map(holding => ({
         ...holding,
         current_price: holding.investment_options.current_price,
-        company_name: holding.investment_options.name
+        company_name: holding.investment_options.name,
+        current_value: holding.shares * holding.investment_options.current_price,
+        gain_loss: holding.shares * (holding.investment_options.current_price - holding.avg_price),
+        gain_loss_percent: ((holding.investment_options.current_price - holding.avg_price) / holding.avg_price) * 100
       })) || []
 
       setHoldings(updatedHoldings)
@@ -106,6 +111,54 @@ export const usePortfolio = () => {
       toast.error('Failed to load portfolio data')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const updateRealTimePrices = async () => {
+    try {
+      // Simulate real-time price updates for all active investments
+      const { data: investments } = await supabase
+        .from('investment_options')
+        .select('*')
+        .eq('is_active', true)
+
+      if (investments) {
+        const updates = investments.map(investment => {
+          // Simulate realistic price movement (-2% to +2%)
+          const changePercent = (Math.random() - 0.5) * 0.04
+          const newPrice = investment.current_price * (1 + changePercent)
+          const priceChange = newPrice - investment.current_price
+          const priceChangePercent = (priceChange / investment.current_price) * 100
+
+          return {
+            id: investment.id,
+            current_price: Math.max(newPrice, 0.01), // Ensure price doesn't go negative
+            price_change: priceChange,
+            price_change_percent: priceChangePercent,
+            updated_at: new Date().toISOString()
+          }
+        })
+
+        // Update prices in database
+        for (const update of updates) {
+          await supabase
+            .from('investment_options')
+            .update({
+              current_price: update.current_price,
+              price_change: update.price_change,
+              price_change_percent: update.price_change_percent,
+              updated_at: update.updated_at
+            })
+            .eq('id', update.id)
+        }
+
+        // Refresh portfolio data with new prices (but don't show loading)
+        const currentLoading = loading
+        await fetchPortfolioData()
+        setLoading(currentLoading) // Restore original loading state
+      }
+    } catch (error) {
+      console.error('Error updating real-time prices:', error)
     }
   }
 
@@ -180,7 +233,7 @@ export const usePortfolio = () => {
         })
 
       toast.dismiss(loadingToast)
-      toast.success(`Successfully bought ${shares} shares of ${symbol}`)
+      toast.success(`Successfully bought ${shares} shares of ${symbol} at $${price.toFixed(2)}`)
       
       // Refresh data
       await fetchPortfolioData()
@@ -253,7 +306,7 @@ export const usePortfolio = () => {
         })
 
       toast.dismiss(loadingToast)
-      toast.success(`Successfully sold ${shares} shares of ${symbol}`)
+      toast.success(`Successfully sold ${shares} shares of ${symbol} at $${price.toFixed(2)}`)
 
       // Refresh data
       await fetchPortfolioData()
@@ -266,7 +319,7 @@ export const usePortfolio = () => {
 
   // Calculate real-time portfolio metrics
   const totalHoldingsValue = holdings.reduce((sum, holding) => 
-    sum + (holding.shares * holding.current_price), 0
+    sum + (holding.current_value || holding.shares * holding.current_price), 0
   )
   
   const totalValue = userBalances.cash_balance + userBalances.savings_balance + totalHoldingsValue
@@ -281,9 +334,9 @@ export const usePortfolio = () => {
     } : null,
     holdings: holdings.map(holding => ({
       ...holding,
-      current_value: holding.shares * holding.current_price,
-      gain_loss: holding.shares * (holding.current_price - holding.avg_price),
-      gain_loss_percent: ((holding.current_price - holding.avg_price) / holding.avg_price) * 100
+      current_value: holding.current_value || holding.shares * holding.current_price,
+      gain_loss: holding.gain_loss || holding.shares * (holding.current_price - holding.avg_price),
+      gain_loss_percent: holding.gain_loss_percent || ((holding.current_price - holding.avg_price) / holding.avg_price) * 100
     })),
     transactions,
     loading,
@@ -293,6 +346,7 @@ export const usePortfolio = () => {
     totalGainLossPercent,
     buyStock,
     sellStock,
-    refreshData: fetchPortfolioData
+    refreshData: fetchPortfolioData,
+    updateRealTimePrices
   }
 }
