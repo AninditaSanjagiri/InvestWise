@@ -24,6 +24,8 @@ export const usePortfolio = () => {
   }, [user])
 
   const fetchPortfolioData = async () => {
+    if (!user) return
+    
     try {
       setLoading(true)
       
@@ -31,52 +33,58 @@ export const usePortfolio = () => {
       const { data: userData, error: userError } = await supabase
         .from('users')
         .select('cash_balance, savings_balance')
-        .eq('id', user!.id)
+        .eq('id', user.id)
         .single()
 
-      if (userError) throw userError
-      
-      const balances = userData || { cash_balance: 10000, savings_balance: 0 }
-      setUserBalances(balances)
+      if (userError) {
+        console.error('User error:', userError)
+        // If user doesn't exist in users table, create them
+        if (userError.code === 'PGRST116') {
+          await supabase
+            .from('users')
+            .insert({
+              id: user.id,
+              cash_balance: 10000,
+              savings_balance: 0,
+              onboarding_completed: false
+            })
+          
+          setUserBalances({ cash_balance: 10000, savings_balance: 0 })
+        } else {
+          throw userError
+        }
+      } else {
+        const balances = userData || { cash_balance: 10000, savings_balance: 0 }
+        setUserBalances(balances)
+      }
 
       // Get or create portfolio
       let { data: portfolioData } = await supabase
         .from('portfolios')
         .select('*')
-        .eq('user_id', user!.id)
+        .eq('user_id', user.id)
         .single()
 
       if (!portfolioData) {
         // Create initial portfolio
-        const { data: newPortfolio } = await supabase
+        const { data: newPortfolio, error: createError } = await supabase
           .from('portfolios')
           .insert({
-            user_id: user!.id,
-            balance: balances.cash_balance,
-            total_value: balances.cash_balance + balances.savings_balance
+            user_id: user.id,
+            balance: userBalances.cash_balance,
+            total_value: userBalances.cash_balance + userBalances.savings_balance
           })
           .select()
           .single()
         
+        if (createError) throw createError
         portfolioData = newPortfolio
-      } else {
-        // Update portfolio balance to match user's cash balance
-        await supabase
-          .from('portfolios')
-          .update({ 
-            balance: balances.cash_balance,
-            total_value: balances.cash_balance + balances.savings_balance
-          })
-          .eq('id', portfolioData.id)
-        
-        portfolioData.balance = balances.cash_balance
-        portfolioData.total_value = balances.cash_balance + balances.savings_balance
       }
 
       setPortfolio(portfolioData)
 
       // Get holdings with current prices from investment_options
-      const { data: holdingsData } = await supabase
+      const { data: holdingsData, error: holdingsError } = await supabase
         .from('holdings')
         .select(`
           *,
@@ -84,27 +92,37 @@ export const usePortfolio = () => {
         `)
         .eq('portfolio_id', portfolioData.id)
 
-      // Calculate real-time values for holdings
-      const updatedHoldings = holdingsData?.map(holding => ({
-        ...holding,
-        current_price: holding.investment_options.current_price,
-        company_name: holding.investment_options.name,
-        current_value: holding.shares * holding.investment_options.current_price,
-        gain_loss: holding.shares * (holding.investment_options.current_price - holding.avg_price),
-        gain_loss_percent: ((holding.investment_options.current_price - holding.avg_price) / holding.avg_price) * 100
-      })) || []
+      if (holdingsError) {
+        console.error('Holdings error:', holdingsError)
+        setHoldings([])
+      } else {
+        // Calculate real-time values for holdings
+        const updatedHoldings = holdingsData?.map(holding => ({
+          ...holding,
+          current_price: holding.investment_options.current_price,
+          company_name: holding.investment_options.name,
+          current_value: holding.shares * holding.investment_options.current_price,
+          gain_loss: holding.shares * (holding.investment_options.current_price - holding.avg_price),
+          gain_loss_percent: ((holding.investment_options.current_price - holding.avg_price) / holding.avg_price) * 100
+        })) || []
 
-      setHoldings(updatedHoldings)
+        setHoldings(updatedHoldings)
+      }
 
       // Get recent transactions
-      const { data: transactionsData } = await supabase
+      const { data: transactionsData, error: transactionsError } = await supabase
         .from('transactions')
         .select('*')
         .eq('portfolio_id', portfolioData.id)
         .order('created_at', { ascending: false })
         .limit(50)
 
-      setTransactions(transactionsData || [])
+      if (transactionsError) {
+        console.error('Transactions error:', transactionsError)
+        setTransactions([])
+      } else {
+        setTransactions(transactionsData || [])
+      }
 
     } catch (error) {
       console.error('Error fetching portfolio:', error)
@@ -124,8 +142,8 @@ export const usePortfolio = () => {
 
       if (investments) {
         const updates = investments.map(investment => {
-          // Simulate realistic price movement (-2% to +2%)
-          const changePercent = (Math.random() - 0.5) * 0.04
+          // Simulate realistic price movement (-1% to +1%)
+          const changePercent = (Math.random() - 0.5) * 0.02
           const newPrice = investment.current_price * (1 + changePercent)
           const priceChange = newPrice - investment.current_price
           const priceChangePercent = (priceChange / investment.current_price) * 100
@@ -152,9 +170,33 @@ export const usePortfolio = () => {
             .eq('id', update.id)
         }
 
-        // Refresh portfolio data with new prices (but don't show loading)
+        // Refresh holdings data with new prices (but don't show loading)
         const currentLoading = loading
-        await fetchPortfolioData()
+        
+        // Get updated holdings
+        if (portfolio) {
+          const { data: holdingsData } = await supabase
+            .from('holdings')
+            .select(`
+              *,
+              investment_options!inner(current_price, price_change, price_change_percent, name)
+            `)
+            .eq('portfolio_id', portfolio.id)
+
+          if (holdingsData) {
+            const updatedHoldings = holdingsData.map(holding => ({
+              ...holding,
+              current_price: holding.investment_options.current_price,
+              company_name: holding.investment_options.name,
+              current_value: holding.shares * holding.investment_options.current_price,
+              gain_loss: holding.shares * (holding.investment_options.current_price - holding.avg_price),
+              gain_loss_percent: ((holding.investment_options.current_price - holding.avg_price) / holding.avg_price) * 100
+            }))
+
+            setHoldings(updatedHoldings)
+          }
+        }
+        
         setLoading(currentLoading) // Restore original loading state
       }
     } catch (error) {
@@ -180,14 +222,13 @@ export const usePortfolio = () => {
       await supabase
         .from('users')
         .update({ cash_balance: newCashBalance })
-        .eq('id', user!.id)
+        .eq('id', user.id)
 
       // Update portfolio balance
       await supabase
         .from('portfolios')
         .update({ 
-          balance: newCashBalance,
-          total_value: portfolio.total_value
+          balance: newCashBalance
         })
         .eq('id', portfolio.id)
 
@@ -207,12 +248,19 @@ export const usePortfolio = () => {
           })
           .eq('id', existingHolding.id)
       } else {
+        // Get the investment option to ensure we have the correct name
+        const { data: investmentOption } = await supabase
+          .from('investment_options')
+          .select('name')
+          .eq('symbol', symbol)
+          .single()
+
         await supabase
           .from('holdings')
           .insert({
             portfolio_id: portfolio.id,
             symbol,
-            company_name: companyName,
+            company_name: investmentOption?.name || companyName,
             shares,
             avg_price: price,
             current_price: price
@@ -263,14 +311,13 @@ export const usePortfolio = () => {
       await supabase
         .from('users')
         .update({ cash_balance: newCashBalance })
-        .eq('id', user!.id)
+        .eq('id', user.id)
 
       // Update portfolio balance
       await supabase
         .from('portfolios')
         .update({ 
-          balance: newCashBalance,
-          total_value: portfolio.total_value
+          balance: newCashBalance
         })
         .eq('id', portfolio.id)
 
@@ -323,7 +370,7 @@ export const usePortfolio = () => {
   )
   
   const totalValue = userBalances.cash_balance + userBalances.savings_balance + totalHoldingsValue
-  const totalGainLoss = totalValue - 10000 // Initial amount
+  const totalGainLoss = totalValue - 10000 // Initial amount was $10,000
   const totalGainLossPercent = ((totalGainLoss / 10000) * 100)
 
   return {

@@ -22,6 +22,9 @@ export interface Holding {
   shares: number
   avg_price: number
   current_price: number
+  current_value?: number
+  gain_loss?: number
+  gain_loss_percent?: number
   created_at: string
   updated_at: string
 }
