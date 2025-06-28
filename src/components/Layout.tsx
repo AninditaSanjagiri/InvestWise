@@ -77,31 +77,70 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50 flex flex-col">
-      {/* Mobile Header - Always Visible */}
-      <div className="lg:hidden bg-white/95 backdrop-blur-xl border-b border-gray-200/50 px-4 py-3 shadow-sm sticky top-0 z-40">
+      {/* Top Header - Always Visible on All Screen Sizes */}
+      <div className="bg-white/95 backdrop-blur-xl border-b border-gray-200/50 px-4 py-3 shadow-sm sticky top-0 z-40">
         <div className="flex items-center justify-between">
-          <button
-            onClick={() => setSidebarOpen(true)}
-            className="p-2 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors"
-          >
-            <Menu className="h-6 w-6" />
-          </button>
-          
-          {/* Mobile Logo */}
-          <div className="flex items-center">
-            <motion.div
-              whileHover={{ scale: 1.05, rotate: 5 }}
-              whileTap={{ scale: 0.95 }}
-              className="p-2 bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl shadow-lg mr-2"
+          {/* Left: Menu Button + Logo */}
+          <div className="flex items-center space-x-3">
+            <button
+              onClick={() => setSidebarOpen(true)}
+              className="p-2 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors lg:hidden"
             >
-              <TrendingUp className="h-5 w-5 text-white" />
-            </motion.div>
-            <span className="text-lg font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-              InvestWise
-            </span>
+              <Menu className="h-6 w-6" />
+            </button>
+            
+            {/* Logo - Always Visible */}
+            <div className="flex items-center">
+              <motion.div
+                whileHover={{ scale: 1.05, rotate: 5 }}
+                whileTap={{ scale: 0.95 }}
+                className="p-2 bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl shadow-lg mr-2"
+              >
+                <TrendingUp className="h-5 w-5 text-white" />
+              </motion.div>
+              <span className="text-lg font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                InvestWise
+              </span>
+            </div>
           </div>
 
-          {/* Mobile Profile Button */}
+          {/* Center: Desktop Navigation (Hidden on Mobile) */}
+          <div className="hidden lg:flex items-center space-x-1">
+            {navigation.slice(0, 6).map((item) => {
+              const Icon = item.icon
+              const isActive = location.pathname === item.href
+              
+              return (
+                <Link
+                  key={item.name}
+                  to={item.href}
+                  className={`flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
+                    isActive
+                      ? 'bg-gradient-to-r from-blue-50 to-purple-50 text-blue-700 shadow-sm'
+                      : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                  }`}
+                >
+                  <Icon className={`h-4 w-4 mr-2 ${
+                    isActive ? 'text-blue-600' : 'text-gray-500'
+                  }`} />
+                  {item.name}
+                </Link>
+              )
+            })}
+            
+            {/* More Menu for Additional Items */}
+            <div className="relative">
+              <button
+                onClick={() => setSidebarOpen(true)}
+                className="flex items-center px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 rounded-lg transition-all"
+              >
+                <Menu className="h-4 w-4 mr-2" />
+                More
+              </button>
+            </div>
+          </div>
+
+          {/* Right: Profile */}
           <div className="relative">
             <motion.button
               whileHover={{ scale: 1.05 }}
@@ -112,7 +151,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               {user.user_metadata?.full_name?.[0] || user.email[0].toUpperCase()}
             </motion.button>
             
-            {/* Mobile Profile Dropdown */}
+            {/* Profile Dropdown */}
             <AnimatePresence>
               {profileOpen && (
                 <motion.div
@@ -127,6 +166,18 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                         {user.user_metadata?.full_name || 'User'}
                       </p>
                       <p className="text-xs text-gray-500">{user.email}</p>
+                    </div>
+                    <div className="border-t pt-3 space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-600">Member since:</span>
+                        <span className="text-gray-900">
+                          {new Date(user.created_at).toLocaleDateString()}
+                        </span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-600">Account type:</span>
+                        <span className="text-green-600 font-medium">Free</span>
+                      </div>
                     </div>
                     <div className="border-t pt-3">
                       <motion.button
@@ -148,7 +199,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       </div>
 
       <div className="flex flex-1">
-        {/* Mobile overlay */}
+        {/* Mobile/Tablet overlay */}
         <AnimatePresence>
           {sidebarOpen && (
             <motion.div
@@ -162,33 +213,17 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           )}
         </AnimatePresence>
 
-        {/* Sidebar */}
+        {/* Sidebar - Mobile/Tablet Only */}
         <motion.div
           initial={false}
           animate={sidebarOpen ? "open" : "closed"}
           variants={sidebarVariants}
           transition={{ type: "spring", stiffness: 300, damping: 30 }}
-          className="fixed lg:static inset-y-0 left-0 z-50 w-64 bg-white/95 backdrop-blur-xl shadow-2xl lg:shadow-xl border-r border-gray-200/50 lg:translate-x-0"
+          className="fixed lg:hidden inset-y-0 left-0 z-50 w-64 bg-white/95 backdrop-blur-xl shadow-2xl border-r border-gray-200/50"
         >
           <div className="flex flex-col h-full">
-            {/* Desktop Logo */}
-            <div className="hidden lg:flex items-center justify-between h-16 px-4 border-b border-gray-200/50">
-              <div className="flex items-center">
-                <motion.div
-                  whileHover={{ scale: 1.05, rotate: 5 }}
-                  whileTap={{ scale: 0.95 }}
-                  className="p-2 bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl shadow-lg"
-                >
-                  <TrendingUp className="h-6 w-6 text-white" />
-                </motion.div>
-                <span className="ml-3 text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                  InvestWise
-                </span>
-              </div>
-            </div>
-
-            {/* Mobile Sidebar Header */}
-            <div className="lg:hidden flex items-center justify-between h-16 px-4 border-b border-gray-200/50">
+            {/* Sidebar Header */}
+            <div className="flex items-center justify-between h-16 px-4 border-b border-gray-200/50">
               <div className="flex items-center">
                 <motion.div
                   whileHover={{ scale: 1.05, rotate: 5 }}
@@ -240,51 +275,11 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               })}
             </nav>
 
-            {/* Desktop User Info */}
-            <div className="hidden lg:block p-4 border-t border-gray-200/50 bg-gradient-to-r from-gray-50/50 to-blue-50/50">
+            {/* Sidebar Footer */}
+            <div className="p-4 border-t border-gray-200/50 bg-gradient-to-r from-gray-50/50 to-blue-50/50">
               <div className="flex items-center">
-                <div className="flex-shrink-0 relative">
-                  <motion.button
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={() => setProfileOpen(!profileOpen)}
-                    className="h-10 w-10 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-semibold shadow-lg"
-                  >
-                    {user.user_metadata?.full_name?.[0] || user.email[0].toUpperCase()}
-                  </motion.button>
-                  
-                  {/* Desktop Profile Dropdown */}
-                  <AnimatePresence>
-                    {profileOpen && (
-                      <motion.div
-                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                        exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                        className="absolute bottom-full left-0 mb-2 w-64 bg-white rounded-xl shadow-xl border border-gray-200 p-4 z-50"
-                      >
-                        <div className="space-y-3">
-                          <div>
-                            <p className="text-sm font-medium text-gray-900">
-                              {user.user_metadata?.full_name || 'User'}
-                            </p>
-                            <p className="text-xs text-gray-500">{user.email}</p>
-                          </div>
-                          <div className="border-t pt-3 space-y-2">
-                            <div className="flex justify-between text-sm">
-                              <span className="text-gray-600">Member since:</span>
-                              <span className="text-gray-900">
-                                {new Date(user.created_at).toLocaleDateString()}
-                              </span>
-                            </div>
-                            <div className="flex justify-between text-sm">
-                              <span className="text-gray-600">Account type:</span>
-                              <span className="text-green-600 font-medium">Free</span>
-                            </div>
-                          </div>
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
+                <div className="h-10 w-10 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-semibold shadow-lg">
+                  {user.user_metadata?.full_name?.[0] || user.email[0].toUpperCase()}
                 </div>
                 <div className="ml-3 flex-1">
                   <p className="text-sm font-medium text-gray-900">
@@ -308,7 +303,6 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
         {/* Main content */}
         <div className="flex-1 flex flex-col overflow-hidden">
-          {/* Main content area */}
           <main className="flex-1 overflow-auto">
             <div className="p-4 lg:p-8">
               {children}
