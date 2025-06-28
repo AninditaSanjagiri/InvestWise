@@ -11,6 +11,7 @@ import {
   Star,
   Eye
 } from 'lucide-react'
+import { supabase } from '../lib/supabase'
 
 interface NewsArticle {
   id: string
@@ -57,33 +58,39 @@ const NewsAndInsights: React.FC = () => {
   const fetchNewsAndInsights = async () => {
     setLoading(true)
     try {
-      // Fetch news from edge function
-      const newsResponse = await fetch('https://geoyxneteubsrpasajll.functions.supabase.co/news-feed', {
-        method: 'POST',
-        headers: {
-    'Content-Type': 'application/json',
-    'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdlb3l4bmV0ZXVic3JwYXNhamxsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA2NjExNjYsImV4cCI6MjA2NjIzNzE2Nn0.y_2ixQ_CEDKxascguO8Q4Hoe4N6ublfLqyQx48EiTf4'
-  },
-        body: JSON.stringify({ 
-          category: selectedCategory === 'all' ? undefined : selectedCategory,
-          limit: 20 
+      // Fetch news from edge function using Supabase client
+      try {
+        const { data: newsData, error: newsError } = await supabase.functions.invoke('news-feed', {
+          body: { 
+            category: selectedCategory === 'all' ? undefined : selectedCategory,
+            limit: 20 
+          }
         })
-      })
-      
-      if (newsResponse.ok) {
-        const newsData = await newsResponse.json()
-        setNews(newsData.news || [])
+        
+        if (newsError) {
+          console.error('News fetch error:', newsError)
+        } else {
+          setNews(newsData?.news || [])
+        }
+      } catch (newsError) {
+        console.error('Error fetching news:', newsError)
+        // Set empty array if news fetch fails
+        setNews([])
       }
 
       // Fetch educational content from Supabase
-      const { supabase } = await import('../lib/supabase')
-      const { data: insightsData } = await supabase
+      const { data: insightsData, error: insightsError } = await supabase
         .from('educational_content')
         .select('*')
         .order('published_at', { ascending: false })
         .limit(10)
 
-      setInsights(insightsData || [])
+      if (insightsError) {
+        console.error('Insights fetch error:', insightsError)
+        setInsights([])
+      } else {
+        setInsights(insightsData || [])
+      }
     } catch (error) {
       console.error('Error fetching news and insights:', error)
     } finally {

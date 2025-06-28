@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { supabase } from '../lib/supabase'
 
 interface MarketQuote {
   symbol: string
@@ -37,21 +38,15 @@ export const useMarketData = (): MarketDataHook => {
     setError(null)
 
     try {
-      const response = await fetch('https://geoyxneteubsrpasajll.functions.supabase.co/market-data?symbol=AAPL', {
-        method: 'POST',
-        headers: {
-    'Content-Type': 'application/json',
-    'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdlb3l4bmV0ZXVic3JwYXNhamxsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA2NjExNjYsImV4cCI6MjA2NjIzNzE2Nn0.y_2ixQ_CEDKxascguO8Q4Hoe4N6ublfLqyQx48EiTf4'
-  },
-        body: JSON.stringify({ symbols, type: 'quote' })
+      const { data, error: functionError } = await supabase.functions.invoke('market-data', {
+        body: { symbols, type: 'quote' }
       })
 
-      if (!response.ok) {
-        throw new Error('Failed to fetch market data')
+      if (functionError) {
+        throw new Error(functionError.message || 'Failed to fetch market data')
       }
 
-      const data = await response.json()
-      setQuotes(data.quotes || [])
+      setQuotes(data?.quotes || [])
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error')
       console.error('Error fetching quotes:', err)
@@ -67,23 +62,17 @@ export const useMarketData = (): MarketDataHook => {
     setError(null)
 
     try {
-      const response = await fetch('https://geoyxneteubsrpasajll.functions.supabase.co/market-data?symbol=AAPL', {
-        method: 'POST',
-        headers: {
-    'Content-Type': 'application/json',
-    'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdlb3l4bmV0ZXVic3JwYXNhamxsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA2NjExNjYsImV4cCI6MjA2NjIzNzE2Nn0.y_2ixQ_CEDKxascguO8Q4Hoe4N6ublfLqyQx48EiTf4'
-  },
-        body: JSON.stringify({ symbols, type: 'historical', period })
+      const { data, error: functionError } = await supabase.functions.invoke('market-data', {
+        body: { symbols, type: 'historical', period }
       })
 
-      if (!response.ok) {
-        throw new Error('Failed to fetch historical data')
+      if (functionError) {
+        throw new Error(functionError.message || 'Failed to fetch historical data')
       }
 
-      const data = await response.json()
       const historicalMap: { [symbol: string]: HistoricalDataPoint[] } = {}
       
-      data.historical?.forEach((item: any) => {
+      data?.historical?.forEach((item: any) => {
         historicalMap[item.symbol] = item.data
       })
 
@@ -100,21 +89,15 @@ export const useMarketData = (): MarketDataHook => {
     if (!query.trim()) return []
 
     try {
-      const response = await fetch('https://geoyxneteubsrpasajll.functions.supabase.co/market-data?symbol=AAPL', {
-        method: 'POST',
-        headers: {
-    'Content-Type': 'application/json',
-    'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdlb3l4bmV0ZXVic3JwYXNhamxsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA2NjExNjYsImV4cCI6MjA2NjIzNzE2Nn0.y_2ixQ_CEDKxascguO8Q4Hoe4N6ublfLqyQx48EiTf4'
-  },
-        body: JSON.stringify({ type: 'search', query })
+      const { data, error: functionError } = await supabase.functions.invoke('market-data', {
+        body: { type: 'search', query }
       })
 
-      if (!response.ok) {
-        throw new Error('Failed to search investments')
+      if (functionError) {
+        throw new Error(functionError.message || 'Failed to search investments')
       }
 
-      const data = await response.json()
-      return data.results || []
+      return data?.results || []
     } catch (err) {
       console.error('Error searching investments:', err)
       return []
