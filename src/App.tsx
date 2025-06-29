@@ -15,10 +15,6 @@ import Trade from './pages/Trade'
 import Portfolio from './pages/Portfolio'
 import History from './pages/History'
 import Achievements from './pages/Achievements'
-import Goals from './pages/Goals'
-import Research from './pages/Research'
-import Bank from './pages/Bank'
-import Calculators from './pages/Calculators'
 
 function App() {
   return (
@@ -112,46 +108,6 @@ function App() {
                 <ProtectedRoute>
                   <Layout>
                     <Achievements />
-                  </Layout>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/goals"
-              element={
-                <ProtectedRoute>
-                  <Layout>
-                    <Goals />
-                  </Layout>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/research"
-              element={
-                <ProtectedRoute>
-                  <Layout>
-                    <Research />
-                  </Layout>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/bank"
-              element={
-                <ProtectedRoute>
-                  <Layout>
-                    <Bank />
-                  </Layout>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/calculators"
-              element={
-                <ProtectedRoute>
-                  <Layout>
-                    <Calculators />
                   </Layout>
                 </ProtectedRoute>
               }

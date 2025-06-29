@@ -16,10 +16,6 @@ import {
   X,
   Play,
   GamepadIcon,
-  Target,
-  Search,
-  Calculator,
-  Banknote,
   ChevronDown,
   Sparkles
 } from 'lucide-react'
@@ -54,19 +50,15 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     { name: 'Learn', href: '/learn', icon: BookOpen },
     { name: 'Videos', href: '/videos', icon: Play },
     { name: 'Quiz & Games', href: '/quiz', icon: GamepadIcon },
-    { name: 'Calculators', href: '/calculators', icon: Calculator },
     { name: 'Trade', href: '/trade', icon: TrendingUp },
-    { name: 'Research', href: '/research', icon: Search },
     { name: 'Portfolio', href: '/portfolio', icon: PieChart },
-    { name: 'Bank Account', href: '/bank', icon: Banknote },
-    { name: 'Goals', href: '/goals', icon: Target },
     { name: 'History', href: '/history', icon: History },
     { name: 'Achievements', href: '/achievements', icon: Trophy },
   ]
 
-  // Split navigation for desktop: first 6 items in main nav, rest in "More" menu
-  const mainNavItems = navigation.slice(0, 6)
-  const moreNavItems = navigation.slice(6)
+  // Split navigation for desktop: first 5 items in main nav, rest in "More" menu
+  const mainNavItems = navigation.slice(0, 5)
+  const moreNavItems = navigation.slice(5)
 
   if (!user) {
     return <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">{children}</div>

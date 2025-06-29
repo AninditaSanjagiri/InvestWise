@@ -1,11 +1,32 @@
 import React, { useState, useEffect } from 'react'
-import { Search, TrendingUp, TrendingDown, ShoppingCart, Minus, Filter, BarChart3 } from 'lucide-react'
+import { Search, TrendingUp, TrendingDown, ShoppingCart, Minus, Filter, BarChart3, Calendar, DollarSign, Building, Info } from 'lucide-react'
 import { usePortfolio } from '../hooks/usePortfolio'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import RiskAlignmentModal from '../components/RiskAlignmentModal'
 import { motion, AnimatePresence } from 'framer-motion'
 import LoadingSpinner from '../components/LoadingSpinner'
+import { Line } from 'react-chartjs-2'
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend,
+} from 'chart.js'
+
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend
+)
 
 interface InvestmentOption {
   id: string
@@ -39,6 +60,7 @@ const Trade: React.FC = () => {
   const [userRiskProfile, setUserRiskProfile] = useState<'conservative' | 'moderate' | 'aggressive'>('moderate')
   const [showRiskModal, setShowRiskModal] = useState(false)
   const [pendingTrade, setPendingTrade] = useState<{stock: InvestmentOption, shares: number} | null>(null)
+  const [chartPeriod, setChartPeriod] = useState('1M')
 
   useEffect(() => {
     fetchInvestments()
@@ -205,6 +227,86 @@ const Trade: React.FC = () => {
     }
   }
 
+  // Generate mock chart data for selected stock
+  const generateChartData = () => {
+    if (!selectedStock) return null
+
+    const labels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun']
+    const basePrice = selectedStock.current_price
+    
+    // Create realistic price progression
+    const dataPoints = labels.map((_, index) => {
+      const variation = (Math.random() - 0.5) * basePrice * 0.2
+      return Math.max(basePrice + variation, basePrice * 0.5)
+    })
+    
+    // Ensure the last point reflects current price trend
+    dataPoints[dataPoints.length - 1] = basePrice
+
+    return {
+      labels,
+      datasets: [
+        {
+          label: selectedStock.symbol,
+          data: dataPoints,
+          borderColor: selectedStock.price_change >= 0 ? '#10B981' : '#EF4444',
+          backgroundColor: selectedStock.price_change >= 0 ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+          tension: 0.4,
+          fill: true,
+          pointBackgroundColor: selectedStock.price_change >= 0 ? '#10B981' : '#EF4444',
+          pointBorderColor: '#fff',
+          pointBorderWidth: 2,
+          pointRadius: 4,
+        },
+      ],
+    }
+  }
+
+  const chartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        mode: 'index' as const,
+        intersect: false,
+        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+        titleColor: 'white',
+        bodyColor: 'white',
+        borderColor: 'rgba(255, 255, 255, 0.1)',
+        borderWidth: 1,
+        cornerRadius: 12,
+        padding: 12,
+      }
+    },
+    scales: {
+      y: {
+        beginAtZero: false,
+        grid: { 
+          color: 'rgba(0, 0, 0, 0.05)',
+          drawBorder: false,
+        },
+        ticks: {
+          callback: function(value: any) {
+            return '$' + value.toFixed(2)
+          },
+          color: 'rgba(0, 0, 0, 0.6)',
+        }
+      },
+      x: { 
+        grid: { display: false },
+        ticks: {
+          color: 'rgba(0, 0, 0, 0.6)',
+        }
+      },
+    },
+    interaction: {
+      mode: 'nearest' as const,
+      axis: 'x' as const,
+      intersect: false,
+    },
+  }
+
   const investmentTypes = ['All', ...Array.from(new Set(investments.map(inv => inv.type)))]
   const riskCategories = ['All', 'Conservative', 'Moderate', 'Aggressive']
 
@@ -217,8 +319,8 @@ const Trade: React.FC = () => {
         className="flex items-center justify-between"
       >
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Trade Investments</h1>
-          <p className="text-gray-600">Explore and trade various investment options</p>
+          <h1 className="text-3xl font-bold text-gray-900">Trade & Research</h1>
+          <p className="text-gray-600">Explore, analyze, and trade various investment options</p>
         </div>
         <div className="text-right">
           <p className="text-sm text-gray-600">Available Cash</p>
@@ -356,153 +458,246 @@ const Trade: React.FC = () => {
           </motion.div>
         </div>
 
-        {/* Trade Panel */}
+        {/* Research & Trade Panel */}
         <div className="space-y-6">
           {selectedStock ? (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="bg-white rounded-lg shadow-md p-6"
-            >
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                Trade {selectedStock.symbol}
-              </h3>
-              
-              <div className="space-y-4">
-                {/* Trade Type */}
-                <div className="flex space-x-2">
-                  <button
-                    onClick={() => setTradeType('buy')}
-                    className={`flex-1 py-2 px-4 rounded-md font-medium transition-colors ${
-                      tradeType === 'buy'
-                        ? 'bg-green-600 text-white'
-                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                    }`}
-                  >
-                    <ShoppingCart className="h-4 w-4 inline mr-2" />
-                    Buy
-                  </button>
-                  <button
-                    onClick={() => setTradeType('sell')}
-                    className={`flex-1 py-2 px-4 rounded-md font-medium transition-colors ${
-                      tradeType === 'sell'
-                        ? 'bg-red-600 text-white'
-                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                    }`}
-                  >
-                    <Minus className="h-4 w-4 inline mr-2" />
-                    Sell
-                  </button>
-                </div>
-
-                {/* Investment Info */}
-                <div className="bg-gray-50 p-4 rounded-md">
-                  <div className="flex items-center space-x-2 mb-2">
-                    <span className="text-xl">{getTypeIcon(selectedStock.type)}</span>
-                    <div>
-                      <p className="text-sm text-gray-600">{selectedStock.name}</p>
-                      <p className="text-lg font-semibold text-gray-900">
-                        ${selectedStock.current_price.toFixed(2)} per {selectedStock.type === 'Stock' ? 'share' : 'unit'}
-                      </p>
+            <>
+              {/* Stock Details & Chart */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-white rounded-lg shadow-md p-6"
+              >
+                <div className="flex items-start justify-between mb-4">
+                  <div>
+                    <h1 className="text-xl font-bold text-gray-900">{selectedStock.name}</h1>
+                    <p className="text-lg text-gray-600">{selectedStock.symbol}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-2xl font-bold text-gray-900">
+                      ${selectedStock.current_price.toFixed(2)}
+                    </p>
+                    <div className="flex items-center space-x-2">
+                      {selectedStock.price_change >= 0 ? (
+                        <TrendingUp className="h-4 w-4 text-green-600" />
+                      ) : (
+                        <TrendingDown className="h-4 w-4 text-red-600" />
+                      )}
+                      <span className={`font-medium ${
+                        selectedStock.price_change >= 0 ? 'text-green-600' : 'text-red-600'
+                      }`}>
+                        {selectedStock.price_change >= 0 ? '+' : ''}
+                        {selectedStock.price_change.toFixed(2)} ({selectedStock.price_change_percent.toFixed(2)}%)
+                      </span>
                     </div>
                   </div>
-                  <div className="flex items-center space-x-2">
-                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${getRiskColor(selectedStock.risk_category)}`}>
-                      {selectedStock.risk_category} Risk
+                </div>
+
+                {/* Key Metrics */}
+                <div className="grid grid-cols-2 gap-4 mb-6">
+                  <div>
+                    <p className="text-sm text-gray-600">Type</p>
+                    <p className="font-semibold text-gray-900">{selectedStock.type}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600">Risk Level</p>
+                    <span className={`inline-block px-2 py-1 text-xs font-medium rounded-full ${getRiskColor(selectedStock.risk_category)}`}>
+                      {selectedStock.risk_category}
                     </span>
-                    <span className="px-2 py-1 text-xs font-medium bg-gray-100 text-gray-600 rounded-full">
-                      {selectedStock.type}
-                    </span>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600">Sector</p>
+                    <p className="font-semibold text-gray-900">{selectedStock.sector || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600">Volume</p>
+                    <p className="font-semibold text-gray-900">
+                      {selectedStock.volume ? selectedStock.volume.toLocaleString() : 'N/A'}
+                    </p>
                   </div>
                 </div>
 
-                {/* Risk Warning for Misaligned Investments */}
-                {tradeType === 'buy' && !checkRiskAlignment(selectedStock) && (
-                  <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3">
-                    <div className="flex items-start space-x-2">
-                      <div className="text-yellow-600">⚠️</div>
-                      <div>
-                        <p className="text-sm font-medium text-yellow-800">Risk Mismatch</p>
-                        <p className="text-xs text-yellow-700">
-                          This {selectedStock.risk_category.toLowerCase()} risk investment may not align with your {userRiskProfile} risk profile.
-                        </p>
+                {/* Price Chart */}
+                <div className="mb-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-semibold text-gray-900">Price Chart</h3>
+                    <div className="flex space-x-2">
+                      {['1D', '1W', '1M', '3M', '1Y'].map((period) => (
+                        <button
+                          key={period}
+                          onClick={() => setChartPeriod(period)}
+                          className={`px-3 py-1 text-sm rounded-md transition-colors ${
+                            chartPeriod === period
+                              ? 'bg-blue-600 text-white'
+                              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                          }`}
+                        >
+                          {period}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="h-48">
+                    {generateChartData() && (
+                      <Line data={generateChartData()!} options={chartOptions} />
+                    )}
+                  </div>
+                </div>
+
+                {/* Additional Metrics */}
+                {(selectedStock.market_cap || selectedStock.pe_ratio) && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                    {selectedStock.market_cap && (
+                      <div className="text-center p-3 bg-blue-50 rounded-lg">
+                        <DollarSign className="h-6 w-6 text-blue-600 mx-auto mb-1" />
+                        <p className="text-sm text-gray-600">Market Cap</p>
+                        <p className="text-lg font-bold text-gray-900">{selectedStock.market_cap}</p>
+                      </div>
+                    )}
+                    {selectedStock.pe_ratio && (
+                      <div className="text-center p-3 bg-green-50 rounded-lg">
+                        <BarChart3 className="h-6 w-6 text-green-600 mx-auto mb-1" />
+                        <p className="text-sm text-gray-600">P/E Ratio</p>
+                        <p className="text-lg font-bold text-gray-900">{selectedStock.pe_ratio}</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Description */}
+                {selectedStock.description && (
+                  <div>
+                    <h4 className="text-sm font-medium text-gray-900 mb-2">About</h4>
+                    <p className="text-sm text-gray-700 leading-relaxed">{selectedStock.description}</p>
+                  </div>
+                )}
+              </motion.div>
+
+              {/* Trade Panel */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-white rounded-lg shadow-md p-6"
+              >
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                  Trade {selectedStock.symbol}
+                </h3>
+                
+                <div className="space-y-4">
+                  {/* Trade Type */}
+                  <div className="flex space-x-2">
+                    <button
+                      onClick={() => setTradeType('buy')}
+                      className={`flex-1 py-2 px-4 rounded-md font-medium transition-colors ${
+                        tradeType === 'buy'
+                          ? 'bg-green-600 text-white'
+                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      }`}
+                    >
+                      <ShoppingCart className="h-4 w-4 inline mr-2" />
+                      Buy
+                    </button>
+                    <button
+                      onClick={() => setTradeType('sell')}
+                      className={`flex-1 py-2 px-4 rounded-md font-medium transition-colors ${
+                        tradeType === 'sell'
+                          ? 'bg-red-600 text-white'
+                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      }`}
+                    >
+                      <Minus className="h-4 w-4 inline mr-2" />
+                      Sell
+                    </button>
+                  </div>
+
+                  {/* Risk Warning for Misaligned Investments */}
+                  {tradeType === 'buy' && !checkRiskAlignment(selectedStock) && (
+                    <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3">
+                      <div className="flex items-start space-x-2">
+                        <div className="text-yellow-600">⚠️</div>
+                        <div>
+                          <p className="text-sm font-medium text-yellow-800">Risk Mismatch</p>
+                          <p className="text-xs text-yellow-700">
+                            This {selectedStock.risk_category.toLowerCase()} risk investment may not align with your {userRiskProfile} risk profile.
+                          </p>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                )}
+                  )}
 
-                {/* Shares Input */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Number of {selectedStock.type === 'Stock' ? 'Shares' : 'Units'}
-                  </label>
-                  <input
-                    type="number"
-                    min="1"
-                    max={getMaxShares()}
-                    value={shares}
-                    onChange={(e) => setShares(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="Enter quantity"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">
-                    Max: {getMaxShares().toLocaleString()} {selectedStock.type === 'Stock' ? 'shares' : 'units'}
-                  </p>
+                  {/* Shares Input */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Number of {selectedStock.type === 'Stock' ? 'Shares' : 'Units'}
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      max={getMaxShares()}
+                      value={shares}
+                      onChange={(e) => setShares(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      placeholder="Enter quantity"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Max: {getMaxShares().toLocaleString()} {selectedStock.type === 'Stock' ? 'shares' : 'units'}
+                    </p>
+                  </div>
+
+                  {/* Order Summary */}
+                  {shares && (
+                    <div className="bg-gray-50 p-4 rounded-md space-y-2">
+                      <h4 className="font-medium text-gray-900">Order Summary</h4>
+                      <div className="flex justify-between text-sm">
+                        <span>Quantity:</span>
+                        <span>{parseInt(shares).toLocaleString()}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span>Price per unit:</span>
+                        <span>${selectedStock.current_price.toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between font-medium border-t pt-2">
+                        <span>Total:</span>
+                        <span>${(parseInt(shares) * selectedStock.current_price).toLocaleString()}</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Error Message */}
+                  <AnimatePresence>
+                    {error && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md text-sm"
+                      >
+                        {error}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+
+                  {/* Trade Button */}
+                  <button
+                    onClick={handleTrade}
+                    disabled={!canTrade() || loading}
+                    className={`w-full py-3 px-4 rounded-md font-medium transition-colors ${
+                      canTrade() && !loading
+                        ? tradeType === 'buy'
+                          ? 'bg-green-600 hover:bg-green-700 text-white'
+                          : 'bg-red-600 hover:bg-red-700 text-white'
+                        : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                    }`}
+                  >
+                    {loading ? (
+                      <LoadingSpinner size="sm" />
+                    ) : (
+                      `${tradeType === 'buy' ? 'Buy' : 'Sell'} ${selectedStock.symbol}`
+                    )}
+                  </button>
                 </div>
-
-                {/* Order Summary */}
-                {shares && (
-                  <div className="bg-gray-50 p-4 rounded-md space-y-2">
-                    <h4 className="font-medium text-gray-900">Order Summary</h4>
-                    <div className="flex justify-between text-sm">
-                      <span>Quantity:</span>
-                      <span>{parseInt(shares).toLocaleString()}</span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span>Price per unit:</span>
-                      <span>${selectedStock.current_price.toFixed(2)}</span>
-                    </div>
-                    <div className="flex justify-between font-medium border-t pt-2">
-                      <span>Total:</span>
-                      <span>${(parseInt(shares) * selectedStock.current_price).toLocaleString()}</span>
-                    </div>
-                  </div>
-                )}
-
-                {/* Error Message */}
-                <AnimatePresence>
-                  {error && (
-                    <motion.div
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: 'auto' }}
-                      exit={{ opacity: 0, height: 0 }}
-                      className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md text-sm"
-                    >
-                      {error}
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-
-                {/* Trade Button */}
-                <button
-                  onClick={handleTrade}
-                  disabled={!canTrade() || loading}
-                  className={`w-full py-3 px-4 rounded-md font-medium transition-colors ${
-                    canTrade() && !loading
-                      ? tradeType === 'buy'
-                        ? 'bg-green-600 hover:bg-green-700 text-white'
-                        : 'bg-red-600 hover:bg-red-700 text-white'
-                      : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                  }`}
-                >
-                  {loading ? (
-                    <LoadingSpinner size="sm" />
-                  ) : (
-                    `${tradeType === 'buy' ? 'Buy' : 'Sell'} ${selectedStock.symbol}`
-                  )}
-                </button>
-              </div>
-            </motion.div>
+              </motion.div>
+            </>
           ) : (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -510,7 +705,7 @@ const Trade: React.FC = () => {
               className="bg-white rounded-lg shadow-md p-8 text-center"
             >
               <TrendingUp className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-500">Select an investment to start trading</p>
+              <p className="text-gray-500">Select an investment to view research and start trading</p>
               <p className="text-sm text-gray-400">Choose from stocks, ETFs, bonds, and more</p>
             </motion.div>
           )}
