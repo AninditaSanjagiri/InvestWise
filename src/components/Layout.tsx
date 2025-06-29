@@ -20,7 +20,8 @@ import {
   Search,
   Calculator,
   Banknote,
-  ChevronDown
+  ChevronDown,
+  Sparkles
 } from 'lucide-react'
 
 interface LayoutProps {
@@ -68,7 +69,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const moreNavItems = navigation.slice(6)
 
   if (!user) {
-    return <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50">{children}</div>
+    return <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">{children}</div>
   }
 
   const sidebarVariants = {
@@ -82,98 +83,132 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50 flex flex-col">
-      {/* Top Header - Always Visible on All Screen Sizes */}
-      <div className="bg-white/95 backdrop-blur-xl border-b border-gray-200/50 px-4 py-3 shadow-sm sticky top-0 z-40">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 flex flex-col relative">
+      {/* Enhanced Background Elements */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-br from-blue-400/10 to-purple-600/10 rounded-full blur-3xl animate-pulse"></div>
+        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-gradient-to-tr from-indigo-400/10 to-pink-600/10 rounded-full blur-3xl animate-pulse delay-1000"></div>
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-gradient-to-r from-cyan-400/5 to-blue-600/5 rounded-full blur-3xl animate-pulse delay-2000"></div>
+      </div>
+
+      {/* Top Header - Enhanced with glassmorphism */}
+      <div className="bg-white/70 backdrop-blur-xl border-b border-white/20 px-4 py-3 shadow-lg sticky top-0 z-40">
         <div className="flex items-center justify-between">
-          {/* Left: Menu Button + Logo */}
+          {/* Left: Menu Button + Enhanced Logo */}
           <div className="flex items-center space-x-3">
             <button
               onClick={() => setSidebarOpen(true)}
-              className="p-2 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors lg:hidden"
+              className="p-2 rounded-xl text-gray-600 hover:text-gray-900 hover:bg-white/50 transition-all duration-200 lg:hidden"
             >
               <Menu className="h-6 w-6" />
             </button>
             
-            {/* Logo - Always Visible */}
+            {/* Enhanced Logo */}
             <div className="flex items-center">
               <motion.div
                 whileHover={{ scale: 1.05, rotate: 5 }}
                 whileTap={{ scale: 0.95 }}
-                className="p-2 bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl shadow-lg mr-2"
+                className="relative"
               >
-                <TrendingUp className="h-5 w-5 text-white" />
+                <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl blur-sm opacity-75"></div>
+                <div className="relative p-2 bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl shadow-lg">
+                  <TrendingUp className="h-6 w-6 text-white" />
+                </div>
+                <motion.div
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+                  className="absolute -top-1 -right-1"
+                >
+                  <Sparkles className="h-3 w-3 text-yellow-400" />
+                </motion.div>
               </motion.div>
-              <span className="text-lg font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+              <span className="ml-3 text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
                 InvestWise
               </span>
             </div>
           </div>
 
-          {/* Center: Desktop Navigation (Hidden on Mobile) */}
+          {/* Center: Desktop Navigation (Enhanced) */}
           <div className="hidden lg:flex items-center space-x-1">
             {mainNavItems.map((item) => {
               const Icon = item.icon
               const isActive = location.pathname === item.href
               
               return (
-                <Link
+                <motion.div
                   key={item.name}
-                  to={item.href}
-                  className={`flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
-                    isActive
-                      ? 'bg-gradient-to-r from-blue-50 to-purple-50 text-blue-700 shadow-sm'
-                      : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                  }`}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
                 >
-                  <Icon className={`h-4 w-4 mr-2 ${
-                    isActive ? 'text-blue-600' : 'text-gray-500'
-                  }`} />
-                  {item.name}
-                </Link>
+                  <Link
+                    to={item.href}
+                    className={`flex items-center px-4 py-2 text-sm font-medium rounded-xl transition-all duration-200 ${
+                      isActive
+                        ? 'bg-gradient-to-r from-blue-50 to-purple-50 text-blue-700 shadow-lg border border-blue-200/50'
+                        : 'text-gray-600 hover:bg-white/50 hover:text-gray-900'
+                    }`}
+                  >
+                    <Icon className={`h-4 w-4 mr-2 ${
+                      isActive ? 'text-blue-600' : 'text-gray-500'
+                    }`} />
+                    {item.name}
+                  </Link>
+                </motion.div>
               )
             })}
             
-            {/* More Menu for Additional Items */}
+            {/* Enhanced More Menu */}
             <div className="relative">
-              <button
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
                 onClick={() => setMoreMenuOpen(!moreMenuOpen)}
-                className="flex items-center px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 rounded-lg transition-all"
+                className="flex items-center px-4 py-2 text-sm font-medium text-gray-600 hover:bg-white/50 hover:text-gray-900 rounded-xl transition-all duration-200"
               >
                 <Menu className="h-4 w-4 mr-2" />
                 More
-                <ChevronDown className={`h-4 w-4 ml-1 transition-transform ${moreMenuOpen ? 'rotate-180' : ''}`} />
-              </button>
+                <motion.div
+                  animate={{ rotate: moreMenuOpen ? 180 : 0 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <ChevronDown className="h-4 w-4 ml-1" />
+                </motion.div>
+              </motion.button>
 
-              {/* More Dropdown Menu */}
+              {/* Enhanced More Dropdown Menu */}
               <AnimatePresence>
                 {moreMenuOpen && (
                   <motion.div
                     initial={{ opacity: 0, y: 10, scale: 0.95 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                    className="absolute top-full right-0 mt-2 w-56 bg-white rounded-xl shadow-xl border border-gray-200 py-2 z-50"
+                    className="absolute top-full right-0 mt-2 w-56 bg-white/90 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20 py-2 z-50"
                   >
                     {moreNavItems.map((item) => {
                       const Icon = item.icon
                       const isActive = location.pathname === item.href
                       
                       return (
-                        <Link
+                        <motion.div
                           key={item.name}
-                          to={item.href}
-                          onClick={() => setMoreMenuOpen(false)}
-                          className={`flex items-center px-4 py-3 text-sm font-medium transition-all duration-200 ${
-                            isActive
-                              ? 'bg-gradient-to-r from-blue-50 to-purple-50 text-blue-700 border-r-2 border-blue-600'
-                              : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                          }`}
+                          whileHover={{ x: 4 }}
+                          whileTap={{ scale: 0.98 }}
                         >
-                          <Icon className={`h-4 w-4 mr-3 ${
-                            isActive ? 'text-blue-600' : 'text-gray-500'
-                          }`} />
-                          {item.name}
-                        </Link>
+                          <Link
+                            to={item.href}
+                            onClick={() => setMoreMenuOpen(false)}
+                            className={`flex items-center px-4 py-3 text-sm font-medium transition-all duration-200 ${
+                              isActive
+                                ? 'bg-gradient-to-r from-blue-50 to-purple-50 text-blue-700 border-r-2 border-blue-600'
+                                : 'text-gray-600 hover:bg-white/50 hover:text-gray-900'
+                            }`}
+                          >
+                            <Icon className={`h-4 w-4 mr-3 ${
+                              isActive ? 'text-blue-600' : 'text-gray-500'
+                            }`} />
+                            {item.name}
+                          </Link>
+                        </motion.div>
                       )
                     })}
                   </motion.div>
@@ -182,34 +217,43 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             </div>
           </div>
 
-          {/* Right: Profile */}
+          {/* Right: Enhanced Profile */}
           <div className="relative">
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               onClick={() => setProfileOpen(!profileOpen)}
-              className="h-8 w-8 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-semibold shadow-lg text-sm"
+              className="relative"
             >
-              {user.user_metadata?.full_name?.[0] || user.email[0].toUpperCase()}
+              <div className="h-10 w-10 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-semibold shadow-lg text-sm">
+                {user.user_metadata?.full_name?.[0] || user.email[0].toUpperCase()}
+              </div>
+              <div className="absolute -top-1 -right-1 w-4 h-4 bg-green-400 rounded-full border-2 border-white"></div>
             </motion.button>
             
-            {/* Profile Dropdown */}
+            {/* Enhanced Profile Dropdown */}
             <AnimatePresence>
               {profileOpen && (
                 <motion.div
                   initial={{ opacity: 0, y: 10, scale: 0.95 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                  className="absolute top-full right-0 mt-2 w-64 bg-white rounded-xl shadow-xl border border-gray-200 p-4 z-50"
+                  className="absolute top-full right-0 mt-2 w-72 bg-white/90 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20 p-4 z-50"
                 >
-                  <div className="space-y-3">
-                    <div>
-                      <p className="text-sm font-medium text-gray-900">
-                        {user.user_metadata?.full_name || 'User'}
-                      </p>
-                      <p className="text-xs text-gray-500">{user.email}</p>
+                  <div className="space-y-4">
+                    <div className="flex items-center space-x-3">
+                      <div className="h-12 w-12 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-semibold">
+                        {user.user_metadata?.full_name?.[0] || user.email[0].toUpperCase()}
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-gray-900">
+                          {user.user_metadata?.full_name || 'User'}
+                        </p>
+                        <p className="text-xs text-gray-500">{user.email}</p>
+                      </div>
                     </div>
-                    <div className="border-t pt-3 space-y-2">
+                    
+                    <div className="border-t border-gray-200/50 pt-3 space-y-2">
                       <div className="flex justify-between text-sm">
                         <span className="text-gray-600">Member since:</span>
                         <span className="text-gray-900">
@@ -218,18 +262,22 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                       </div>
                       <div className="flex justify-between text-sm">
                         <span className="text-gray-600">Account type:</span>
-                        <span className="text-green-600 font-medium">Free</span>
+                        <span className="text-green-600 font-medium flex items-center">
+                          <Sparkles className="h-3 w-3 mr-1" />
+                          Free
+                        </span>
                       </div>
                     </div>
-                    <div className="border-t pt-3">
+                    
+                    <div className="border-t border-gray-200/50 pt-3">
                       <motion.button
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
                         onClick={handleSignOut}
-                        className="flex items-center space-x-2 w-full p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                        className="flex items-center space-x-2 w-full p-3 text-red-600 hover:bg-red-50 rounded-xl transition-all duration-200"
                       >
                         <LogOut className="h-4 w-4" />
-                        <span className="text-sm">Sign Out</span>
+                        <span className="text-sm font-medium">Sign Out</span>
                       </motion.button>
                     </div>
                   </div>
@@ -255,24 +303,27 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           )}
         </AnimatePresence>
 
-        {/* Sidebar - Mobile/Tablet Only */}
+        {/* Enhanced Sidebar - Mobile/Tablet Only */}
         <motion.div
           initial={false}
           animate={sidebarOpen ? "open" : "closed"}
           variants={sidebarVariants}
           transition={{ type: "spring", stiffness: 300, damping: 30 }}
-          className="fixed lg:hidden inset-y-0 left-0 z-50 w-64 bg-white/95 backdrop-blur-xl shadow-2xl border-r border-gray-200/50"
+          className="fixed lg:hidden inset-y-0 left-0 z-50 w-72 bg-white/90 backdrop-blur-xl shadow-2xl border-r border-white/20"
         >
           <div className="flex flex-col h-full">
-            {/* Sidebar Header */}
+            {/* Enhanced Sidebar Header */}
             <div className="flex items-center justify-between h-16 px-4 border-b border-gray-200/50">
               <div className="flex items-center">
                 <motion.div
                   whileHover={{ scale: 1.05, rotate: 5 }}
                   whileTap={{ scale: 0.95 }}
-                  className="p-2 bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl shadow-lg"
+                  className="relative"
                 >
-                  <TrendingUp className="h-6 w-6 text-white" />
+                  <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl blur-sm opacity-75"></div>
+                  <div className="relative p-2 bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl shadow-lg">
+                    <TrendingUp className="h-6 w-6 text-white" />
+                  </div>
                 </motion.div>
                 <span className="ml-3 text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
                   InvestWise
@@ -280,14 +331,14 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               </div>
               <button
                 onClick={() => setSidebarOpen(false)}
-                className="p-2 rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+                className="p-2 rounded-xl text-gray-400 hover:text-gray-600 hover:bg-white/50 transition-all duration-200"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
 
-            {/* Navigation */}
-            <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
+            {/* Enhanced Navigation */}
+            <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
               {navigation.map((item) => {
                 const Icon = item.icon
                 const isActive = location.pathname === item.href
@@ -303,8 +354,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                       onClick={() => setSidebarOpen(false)}
                       className={`flex items-center px-4 py-3 text-sm font-medium rounded-xl transition-all duration-200 group ${
                         isActive
-                          ? 'bg-gradient-to-r from-blue-50 to-purple-50 text-blue-700 border-r-2 border-blue-600 shadow-sm'
-                          : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                          ? 'bg-gradient-to-r from-blue-50 to-purple-50 text-blue-700 border-r-2 border-blue-600 shadow-lg'
+                          : 'text-gray-600 hover:bg-white/50 hover:text-gray-900'
                       }`}
                     >
                       <Icon className={`h-5 w-5 mr-3 transition-colors ${
@@ -317,10 +368,10 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               })}
             </nav>
 
-            {/* Sidebar Footer */}
+            {/* Enhanced Sidebar Footer */}
             <div className="p-4 border-t border-gray-200/50 bg-gradient-to-r from-gray-50/50 to-blue-50/50">
               <div className="flex items-center">
-                <div className="h-10 w-10 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-semibold shadow-lg">
+                <div className="h-12 w-12 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-semibold shadow-lg">
                   {user.user_metadata?.full_name?.[0] || user.email[0].toUpperCase()}
                 </div>
                 <div className="ml-3 flex-1">
@@ -333,7 +384,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                   whileHover={{ scale: 1.1 }}
                   whileTap={{ scale: 0.9 }}
                   onClick={handleSignOut}
-                  className="ml-2 p-2 text-gray-400 hover:text-red-600 transition-colors rounded-lg hover:bg-red-50"
+                  className="ml-2 p-2 text-gray-400 hover:text-red-600 transition-colors rounded-xl hover:bg-red-50"
                   title="Sign out"
                 >
                   <LogOut className="h-4 w-4" />
@@ -343,10 +394,10 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           </div>
         </motion.div>
 
-        {/* Main content */}
+        {/* Main content with enhanced styling */}
         <div className="flex-1 flex flex-col overflow-hidden">
           <main className="flex-1 overflow-auto">
-            <div className="p-4 lg:p-8">
+            <div className="p-4 lg:p-8 relative z-10">
               {children}
             </div>
           </main>

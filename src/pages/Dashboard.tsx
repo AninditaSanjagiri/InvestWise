@@ -19,7 +19,9 @@ import {
   Target,
   Shield,
   Zap,
-  RefreshCw
+  RefreshCw,
+  Sparkles,
+  Star
 } from 'lucide-react'
 import { Line, Doughnut } from 'react-chartjs-2'
 import {
@@ -113,10 +115,15 @@ const Dashboard: React.FC = () => {
         {
           label: 'Portfolio Value',
           data: dataPoints,
-          borderColor: totalGainLoss >= 0 ? '#059669' : '#DC2626',
-          backgroundColor: totalGainLoss >= 0 ? 'rgba(5, 150, 105, 0.1)' : 'rgba(220, 38, 38, 0.1)',
+          borderColor: totalGainLoss >= 0 ? '#10B981' : '#EF4444',
+          backgroundColor: totalGainLoss >= 0 ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
           tension: 0.4,
           fill: true,
+          pointBackgroundColor: totalGainLoss >= 0 ? '#10B981' : '#EF4444',
+          pointBorderColor: '#fff',
+          pointBorderWidth: 2,
+          pointRadius: 6,
+          pointHoverRadius: 8,
         },
       ],
     }
@@ -135,19 +142,30 @@ const Dashboard: React.FC = () => {
         bodyColor: 'white',
         borderColor: 'rgba(255, 255, 255, 0.1)',
         borderWidth: 1,
+        cornerRadius: 12,
+        padding: 12,
       }
     },
     scales: {
       y: {
         beginAtZero: false,
-        grid: { color: 'rgba(0, 0, 0, 0.1)' },
+        grid: { 
+          color: 'rgba(0, 0, 0, 0.05)',
+          drawBorder: false,
+        },
         ticks: {
           callback: function(value: any) {
             return '$' + value.toLocaleString()
-          }
+          },
+          color: 'rgba(0, 0, 0, 0.6)',
         }
       },
-      x: { grid: { display: false } },
+      x: { 
+        grid: { display: false },
+        ticks: {
+          color: 'rgba(0, 0, 0, 0.6)',
+        }
+      },
     },
     interaction: {
       mode: 'nearest' as const,
@@ -185,8 +203,9 @@ const Dashboard: React.FC = () => {
       {
         data: portfolioAllocation.map(item => item.value),
         backgroundColor: portfolioAllocation.map(item => item.color),
-        borderWidth: 2,
+        borderWidth: 3,
         borderColor: '#ffffff',
+        hoverBorderWidth: 4,
       },
     ],
   }
@@ -200,9 +219,17 @@ const Dashboard: React.FC = () => {
         labels: {
           padding: 20,
           usePointStyle: true,
+          font: {
+            size: 12,
+          }
         }
       },
       tooltip: {
+        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+        titleColor: 'white',
+        bodyColor: 'white',
+        cornerRadius: 12,
+        padding: 12,
         callbacks: {
           label: function(context: any) {
             const percentage = ((context.parsed / totalValue) * 100).toFixed(1)
@@ -264,18 +291,33 @@ const Dashboard: React.FC = () => {
       variants={containerVariants}
       initial="hidden"
       animate="visible"
-      className="space-y-6"
+      className="space-y-8"
     >
-      {/* Header with Personalization */}
+      {/* Enhanced Header with Personalization */}
       <motion.div variants={itemVariants} className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">
+          <motion.h1 
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            className="text-4xl font-bold bg-gradient-to-r from-gray-900 via-blue-900 to-purple-900 bg-clip-text text-transparent"
+          >
             Welcome back{user?.user_metadata?.full_name ? `, ${user.user_metadata.full_name}` : ''}!
-          </h1>
+            <motion.span
+              animate={{ rotate: [0, 14, -8, 14, -4, 10, 0] }}
+              transition={{ duration: 2, repeat: Infinity, repeatDelay: 3 }}
+              className="inline-block ml-2"
+            >
+              👋
+            </motion.span>
+          </motion.h1>
           <div className="flex items-center space-x-4 mt-2">
-            <p className="text-gray-600">Here's your real-time portfolio overview</p>
+            <p className="text-xl text-gray-600">Here's your real-time portfolio overview</p>
             {userRiskProfile && (
-              <div className="flex items-center space-x-2">
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="flex items-center space-x-2 bg-white/70 backdrop-blur-sm rounded-full px-3 py-1 border border-white/20"
+              >
                 {(() => {
                   const RiskIcon = getRiskProfileIcon(userRiskProfile)
                   return (
@@ -287,7 +329,7 @@ const Dashboard: React.FC = () => {
                     </>
                   )
                 })()}
-              </div>
+              </motion.div>
             )}
           </div>
         </div>
@@ -298,7 +340,7 @@ const Dashboard: React.FC = () => {
             whileTap={{ scale: 0.95 }}
             onClick={handleRefresh}
             disabled={isRefreshing}
-            className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+            className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl font-medium hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-lg disabled:opacity-50"
           >
             <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
             <span>Refresh</span>
@@ -306,7 +348,7 @@ const Dashboard: React.FC = () => {
         </div>
       </motion.div>
 
-      {/* Enhanced Stats Cards */}
+      {/* Enhanced Stats Cards with Glassmorphism */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {[
           {
@@ -316,7 +358,8 @@ const Dashboard: React.FC = () => {
             color: 'blue',
             format: 'currency',
             showToggle: true,
-            subtitle: `From initial $10,000`
+            subtitle: `From initial $10,000`,
+            gradient: 'from-blue-500 to-cyan-500'
           },
           {
             title: 'Available Cash',
@@ -324,7 +367,8 @@ const Dashboard: React.FC = () => {
             icon: Activity,
             color: 'green',
             format: 'currency',
-            subtitle: 'Ready for trading'
+            subtitle: 'Ready for trading',
+            gradient: 'from-green-500 to-emerald-500'
           },
           {
             title: 'Total Gain/Loss',
@@ -333,7 +377,8 @@ const Dashboard: React.FC = () => {
             color: totalGainLoss >= 0 ? 'green' : 'red',
             format: 'currency',
             percentage: totalGainLossPercent,
-            subtitle: `${totalGainLoss >= 0 ? 'Profit' : 'Loss'} since start`
+            subtitle: `${totalGainLoss >= 0 ? 'Profit' : 'Loss'} since start`,
+            gradient: totalGainLoss >= 0 ? 'from-green-500 to-emerald-500' : 'from-red-500 to-pink-500'
           },
           {
             title: 'Active Holdings',
@@ -341,7 +386,8 @@ const Dashboard: React.FC = () => {
             icon: BarChart3,
             color: 'purple',
             format: 'number',
-            subtitle: 'Different investments'
+            subtitle: 'Different investments',
+            gradient: 'from-purple-500 to-violet-500'
           }
         ].map((stat, index) => {
           const Icon = stat.icon
@@ -349,219 +395,267 @@ const Dashboard: React.FC = () => {
             <motion.div
               key={stat.title}
               variants={itemVariants}
-              whileHover={{ y: -5, scale: 1.02 }}
-              className="bg-white rounded-xl shadow-md p-6 hover:shadow-lg transition-all duration-300 border border-gray-100"
+              whileHover={{ y: -8, scale: 1.02 }}
+              className="relative group"
             >
-              <div className="flex items-center justify-between">
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-gray-600 mb-1">{stat.title}</p>
-                  <div className="flex items-center space-x-2">
-                    {stat.format === 'currency' ? (
-                      <p className={`text-2xl font-bold ${
-                        stat.title === 'Total Gain/Loss' 
-                          ? totalGainLoss >= 0 ? 'text-green-600' : 'text-red-600'
-                          : 'text-gray-900'
-                      }`}>
-                        {showBalance ? `$${Math.abs(stat.value).toLocaleString()}` : '••••••'}
+              {/* Animated background */}
+              <div className={`absolute inset-0 bg-gradient-to-r ${stat.gradient} rounded-2xl blur-xl opacity-20 group-hover:opacity-30 transition-opacity duration-300`}></div>
+              
+              <div className="relative bg-white/80 backdrop-blur-xl rounded-2xl shadow-xl p-6 hover:shadow-2xl transition-all duration-300 border border-white/20">
+                <div className="flex items-center justify-between">
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-gray-600 mb-1">{stat.title}</p>
+                    <div className="flex items-center space-x-2">
+                      {stat.format === 'currency' ? (
+                        <p className={`text-3xl font-bold ${
+                          stat.title === 'Total Gain/Loss' 
+                            ? totalGainLoss >= 0 ? 'text-green-600' : 'text-red-600'
+                            : 'text-gray-900'
+                        }`}>
+                          {showBalance ? `$${Math.abs(stat.value).toLocaleString()}` : '••••••'}
+                        </p>
+                      ) : (
+                        <p className="text-3xl font-bold text-gray-900">{stat.value}</p>
+                      )}
+                      {stat.showToggle && (
+                        <motion.button
+                          whileHover={{ scale: 1.1 }}
+                          whileTap={{ scale: 0.9 }}
+                          onClick={() => setShowBalance(!showBalance)}
+                          className="text-gray-400 hover:text-gray-600 transition-colors"
+                        >
+                          {showBalance ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </motion.button>
+                      )}
+                    </div>
+                    {stat.percentage !== undefined && (
+                      <p className={`text-sm font-medium ${totalGainLoss >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                        {totalGainLoss >= 0 ? '+' : ''}{showBalance ? stat.percentage.toFixed(2) : '••'}%
                       </p>
-                    ) : (
-                      <p className="text-2xl font-bold text-gray-900">{stat.value}</p>
                     )}
-                    {stat.showToggle && (
-                      <button
-                        onClick={() => setShowBalance(!showBalance)}
-                        className="text-gray-400 hover:text-gray-600 transition-colors"
-                      >
-                        {showBalance ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                      </button>
+                    {stat.subtitle && (
+                      <p className="text-xs text-gray-500 mt-1">{stat.subtitle}</p>
                     )}
                   </div>
-                  {stat.percentage !== undefined && (
-                    <p className={`text-sm font-medium ${totalGainLoss >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                      {totalGainLoss >= 0 ? '+' : ''}{showBalance ? stat.percentage.toFixed(2) : '••'}%
-                    </p>
-                  )}
-                  {stat.subtitle && (
-                    <p className="text-xs text-gray-500 mt-1">{stat.subtitle}</p>
-                  )}
+                  <motion.div
+                    whileHover={{ scale: 1.1, rotate: 5 }}
+                    className={`p-4 bg-gradient-to-r ${stat.gradient} rounded-2xl shadow-lg`}
+                  >
+                    <Icon className="h-6 w-6 text-white" />
+                  </motion.div>
                 </div>
-                <motion.div
-                  whileHover={{ scale: 1.1, rotate: 5 }}
-                  className={`p-3 bg-${stat.color}-50 rounded-xl`}
-                >
-                  <Icon className={`h-6 w-6 text-${stat.color}-600`} />
-                </motion.div>
               </div>
             </motion.div>
           )
         })}
       </div>
 
-      {/* Charts and Portfolio Breakdown */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Portfolio Performance Chart */}
+      {/* Enhanced Charts and Portfolio Breakdown */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Enhanced Portfolio Performance Chart */}
         <motion.div
           variants={itemVariants}
           whileHover={{ scale: 1.01 }}
-          className="lg:col-span-2 bg-white rounded-xl shadow-md p-6 hover:shadow-lg transition-all duration-300"
+          className="lg:col-span-2 relative group"
         >
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-lg font-semibold text-gray-900">Portfolio Performance</h2>
-            <div className="flex items-center space-x-2">
-              <RealTimeIndicator size="sm" />
+          <div className="absolute inset-0 bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-2xl blur-xl opacity-50 group-hover:opacity-70 transition-opacity duration-300"></div>
+          <div className="relative bg-white/80 backdrop-blur-xl rounded-2xl shadow-xl p-6 hover:shadow-2xl transition-all duration-300 border border-white/20">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h2 className="text-xl font-semibold text-gray-900">Portfolio Performance</h2>
+                <p className="text-sm text-gray-600">Your investment journey over time</p>
+              </div>
+              <div className="flex items-center space-x-2">
+                <RealTimeIndicator size="sm" />
+                <Sparkles className="h-4 w-4 text-yellow-500" />
+              </div>
             </div>
-          </div>
-          <div className="h-64">
-            <Line data={generateChartData()} options={chartOptions} />
+            <div className="h-72">
+              <Line data={generateChartData()} options={chartOptions} />
+            </div>
           </div>
         </motion.div>
 
-        {/* Portfolio Allocation */}
+        {/* Enhanced Portfolio Allocation */}
         <motion.div
           variants={itemVariants}
           whileHover={{ scale: 1.01 }}
-          className="bg-white rounded-xl shadow-md p-6 hover:shadow-lg transition-all duration-300"
+          className="relative group"
         >
-          <h2 className="text-lg font-semibold text-gray-900 mb-6">Asset Allocation</h2>
-          {portfolioAllocation.length > 0 ? (
-            <div className="h-64">
-              <Doughnut data={doughnutData} options={doughnutOptions} />
-            </div>
-          ) : (
-            <div className="flex items-center justify-center h-64">
-              <div className="text-center">
-                <PieChart className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-500">No investments yet</p>
-                <p className="text-sm text-gray-400">Start trading to see allocation</p>
+          <div className="absolute inset-0 bg-gradient-to-r from-purple-500/20 to-pink-500/20 rounded-2xl blur-xl opacity-50 group-hover:opacity-70 transition-opacity duration-300"></div>
+          <div className="relative bg-white/80 backdrop-blur-xl rounded-2xl shadow-xl p-6 hover:shadow-2xl transition-all duration-300 border border-white/20">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h2 className="text-xl font-semibold text-gray-900">Asset Allocation</h2>
+                <p className="text-sm text-gray-600">Portfolio distribution</p>
               </div>
+              <PieChart className="h-5 w-5 text-purple-600" />
             </div>
-          )}
-        </motion.div>
-      </div>
-
-      {/* Holdings and Recent Activity */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Top Holdings with Real-time Updates */}
-        <motion.div
-          variants={itemVariants}
-          className="bg-white rounded-xl shadow-md p-6"
-        >
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-lg font-semibold text-gray-900">Your Holdings</h2>
-            <RealTimeIndicator size="sm" />
-          </div>
-          <div className="space-y-4">
-            {holdings.length === 0 ? (
-              <div className="text-center py-8">
-                <BarChart3 className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-500">No holdings yet</p>
-                <p className="text-sm text-gray-400">Start trading to see your positions here</p>
+            {portfolioAllocation.length > 0 ? (
+              <div className="h-72">
+                <Doughnut data={doughnutData} options={doughnutOptions} />
               </div>
             ) : (
-              holdings.slice(0, 5).map((holding, index) => (
-                <motion.div
-                  key={holding.id}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: index * 0.1 }}
-                  whileHover={{ x: 5 }}
-                  className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-all duration-200"
-                >
-                  <div className="flex-1">
-                    <div className="flex items-center space-x-2">
-                      <span className="font-semibold text-gray-900">{holding.symbol}</span>
-                      <span className="text-sm text-gray-500">{holding.shares} shares</span>
-                    </div>
-                    <p className="text-sm text-gray-600 truncate">{holding.company_name}</p>
-                    <p className="text-xs text-gray-500">
-                      Avg: ${holding.avg_price.toFixed(2)} | Current: ${holding.current_price.toFixed(2)}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-semibold text-gray-900">
-                      ${holding.current_value.toLocaleString()}
-                    </p>
-                    <div className="flex items-center space-x-1">
-                      <p className={`text-sm font-medium ${holding.gain_loss >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                        {holding.gain_loss >= 0 ? '+' : ''}${Math.abs(holding.gain_loss).toFixed(2)}
-                      </p>
-                      <p className={`text-xs ${holding.gain_loss >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                        ({holding.gain_loss >= 0 ? '+' : ''}{holding.gain_loss_percent.toFixed(2)}%)
-                      </p>
-                    </div>
-                  </div>
-                </motion.div>
-              ))
-            )}
-          </div>
-        </motion.div>
-
-        {/* Recent Transactions */}
-        <motion.div
-          variants={itemVariants}
-          className="bg-white rounded-xl shadow-md p-6"
-        >
-          <h2 className="text-lg font-semibold text-gray-900 mb-6">Recent Activity</h2>
-          <div className="space-y-4">
-            {transactions.length === 0 ? (
-              <div className="text-center py-8">
-                <Activity className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-500">No transactions yet</p>
-                <p className="text-sm text-gray-400">Your trading activity will appear here</p>
+              <div className="flex items-center justify-center h-72">
+                <div className="text-center">
+                  <PieChart className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-500">No investments yet</p>
+                  <p className="text-sm text-gray-400">Start trading to see allocation</p>
+                </div>
               </div>
-            ) : (
-              transactions.slice(0, 5).map((transaction, index) => (
-                <motion.div
-                  key={transaction.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.1 }}
-                  className="flex items-center justify-between p-4 bg-gray-50 rounded-lg"
-                >
-                  <div className="flex items-center space-x-3">
-                    <div className={`p-2 rounded-full ${
-                      transaction.type === 'buy' ? 'bg-green-100' : 'bg-red-100'
-                    }`}>
-                      {transaction.type === 'buy' ? (
-                        <TrendingUp className={`h-4 w-4 text-green-600`} />
-                      ) : (
-                        <TrendingDown className={`h-4 w-4 text-red-600`} />
-                      )}
-                    </div>
-                    <div>
-                      <p className="font-medium text-gray-900">
-                        {transaction.type.toUpperCase()} {transaction.symbol}
-                      </p>
-                      <p className="text-sm text-gray-500">
-                        {transaction.shares} shares @ ${transaction.price.toFixed(2)}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-semibold text-gray-900">
-                      ${transaction.total.toLocaleString()}
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      {new Date(transaction.created_at).toLocaleDateString()}
-                    </p>
-                  </div>
-                </motion.div>
-              ))
             )}
           </div>
         </motion.div>
       </div>
 
-      {/* Investment Tools */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Investment Calculators */}
-        <motion.div variants={itemVariants}>
-          <InvestmentCalculators />
+      {/* Enhanced Holdings and Recent Activity */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* Enhanced Top Holdings */}
+        <motion.div
+          variants={itemVariants}
+          className="relative group"
+        >
+          <div className="absolute inset-0 bg-gradient-to-r from-green-500/20 to-blue-500/20 rounded-2xl blur-xl opacity-50 group-hover:opacity-70 transition-opacity duration-300"></div>
+          <div className="relative bg-white/80 backdrop-blur-xl rounded-2xl shadow-xl p-6 border border-white/20">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h2 className="text-xl font-semibold text-gray-900">Your Holdings</h2>
+                <p className="text-sm text-gray-600">Real-time portfolio positions</p>
+              </div>
+              <div className="flex items-center space-x-2">
+                <RealTimeIndicator size="sm" />
+                <Star className="h-4 w-4 text-yellow-500" />
+              </div>
+            </div>
+            <div className="space-y-4 max-h-80 overflow-y-auto">
+              {holdings.length === 0 ? (
+                <div className="text-center py-8">
+                  <BarChart3 className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-500">No holdings yet</p>
+                  <p className="text-sm text-gray-400">Start trading to see your positions here</p>
+                </div>
+              ) : (
+                holdings.slice(0, 5).map((holding, index) => (
+                  <motion.div
+                    key={holding.id}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: index * 0.1 }}
+                    whileHover={{ x: 5, scale: 1.02 }}
+                    className="flex items-center justify-between p-4 bg-white/50 backdrop-blur-sm rounded-xl hover:bg-white/70 transition-all duration-200 border border-white/20"
+                  >
+                    <div className="flex-1">
+                      <div className="flex items-center space-x-2">
+                        <span className="font-semibold text-gray-900">{holding.symbol}</span>
+                        <span className="text-sm text-gray-500">{holding.shares} shares</span>
+                      </div>
+                      <p className="text-sm text-gray-600 truncate">{holding.company_name}</p>
+                      <p className="text-xs text-gray-500">
+                        Avg: ${holding.avg_price.toFixed(2)} | Current: ${holding.current_price.toFixed(2)}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-semibold text-gray-900">
+                        ${holding.current_value.toLocaleString()}
+                      </p>
+                      <div className="flex items-center space-x-1">
+                        <p className={`text-sm font-medium ${holding.gain_loss >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                          {holding.gain_loss >= 0 ? '+' : ''}${Math.abs(holding.gain_loss).toFixed(2)}
+                        </p>
+                        <p className={`text-xs ${holding.gain_loss >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                          ({holding.gain_loss >= 0 ? '+' : ''}{holding.gain_loss_percent.toFixed(2)}%)
+                        </p>
+                      </div>
+                    </div>
+                  </motion.div>
+                ))
+              )}
+            </div>
+          </div>
         </motion.div>
 
-        {/* News and Insights */}
-        <motion.div variants={itemVariants}>
-          <NewsAndInsights />
+        {/* Enhanced Recent Transactions */}
+        <motion.div
+          variants={itemVariants}
+          className="relative group"
+        >
+          <div className="absolute inset-0 bg-gradient-to-r from-orange-500/20 to-red-500/20 rounded-2xl blur-xl opacity-50 group-hover:opacity-70 transition-opacity duration-300"></div>
+          <div className="relative bg-white/80 backdrop-blur-xl rounded-2xl shadow-xl p-6 border border-white/20">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h2 className="text-xl font-semibold text-gray-900">Recent Activity</h2>
+                <p className="text-sm text-gray-600">Latest trading transactions</p>
+              </div>
+              <Activity className="h-5 w-5 text-orange-600" />
+            </div>
+            <div className="space-y-4 max-h-80 overflow-y-auto">
+              {transactions.length === 0 ? (
+                <div className="text-center py-8">
+                  <Activity className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-500">No transactions yet</p>
+                  <p className="text-sm text-gray-400">Your trading activity will appear here</p>
+                </div>
+              ) : (
+                transactions.slice(0, 5).map((transaction, index) => (
+                  <motion.div
+                    key={transaction.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.1 }}
+                    whileHover={{ scale: 1.02 }}
+                    className="flex items-center justify-between p-4 bg-white/50 backdrop-blur-sm rounded-xl hover:bg-white/70 transition-all duration-200 border border-white/20"
+                  >
+                    <div className="flex items-center space-x-3">
+                      <div className={`p-2 rounded-full ${
+                        transaction.type === 'buy' ? 'bg-green-100' : 'bg-red-100'
+                      }`}>
+                        {transaction.type === 'buy' ? (
+                          <TrendingUp className="h-4 w-4 text-green-600" />
+                        ) : (
+                          <TrendingDown className="h-4 w-4 text-red-600" />
+                        )}
+                      </div>
+                      <div>
+                        <p className="font-medium text-gray-900">
+                          {transaction.type.toUpperCase()} {transaction.symbol}
+                        </p>
+                        <p className="text-sm text-gray-500">
+                          {transaction.shares} shares @ ${transaction.price.toFixed(2)}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-semibold text-gray-900">
+                        ${transaction.total.toLocaleString()}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        {new Date(transaction.created_at).toLocaleDateString()}
+                      </p>
+                    </div>
+                  </motion.div>
+                ))
+              )}
+            </div>
+          </div>
+        </motion.div>
+      </div>
+
+      {/* Enhanced Investment Tools */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* Enhanced Investment Calculators */}
+        <motion.div variants={itemVariants} className="relative group">
+          <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/20 to-blue-500/20 rounded-2xl blur-xl opacity-50 group-hover:opacity-70 transition-opacity duration-300"></div>
+          <div className="relative">
+            <InvestmentCalculators />
+          </div>
+        </motion.div>
+
+        {/* Enhanced News and Insights */}
+        <motion.div variants={itemVariants} className="relative group">
+          <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/20 to-purple-500/20 rounded-2xl blur-xl opacity-50 group-hover:opacity-70 transition-opacity duration-300"></div>
+          <div className="relative">
+            <NewsAndInsights />
+          </div>
         </motion.div>
       </div>
     </motion.div>
