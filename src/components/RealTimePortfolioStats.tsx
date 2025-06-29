@@ -28,14 +28,16 @@ const RealTimePortfolioStats: React.FC<RealTimePortfolioStatsProps> = ({
       icon: DollarSign,
       color: 'blue',
       format: 'currency',
-      showToggle: true
+      showToggle: true,
+      subtitle: 'All assets combined'
     },
     {
       title: 'Available Cash',
       value: portfolioData.cashBalance,
       icon: Activity,
       color: 'green',
-      format: 'currency'
+      format: 'currency',
+      subtitle: 'Ready for trading'
     },
     {
       title: 'Total Gain/Loss',
@@ -43,14 +45,16 @@ const RealTimePortfolioStats: React.FC<RealTimePortfolioStatsProps> = ({
       icon: portfolioData.totalGainLoss >= 0 ? TrendingUp : TrendingDown,
       color: portfolioData.totalGainLoss >= 0 ? 'green' : 'red',
       format: 'currency',
-      percentage: portfolioData.totalGainLossPercent
+      percentage: portfolioData.totalGainLossPercent,
+      subtitle: `${portfolioData.totalGainLoss >= 0 ? 'Profit' : 'Loss'} from $10,000 start`
     },
     {
       title: 'Active Holdings',
       value: portfolioData.holdings.length,
       icon: BarChart3,
       color: 'purple',
-      format: 'number'
+      format: 'number',
+      subtitle: 'Different investments'
     }
   ]
 
@@ -65,44 +69,56 @@ const RealTimePortfolioStats: React.FC<RealTimePortfolioStatsProps> = ({
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: index * 0.1 }}
             whileHover={{ y: -5, scale: 1.02 }}
-            className="bg-white rounded-xl shadow-md p-6 hover:shadow-lg transition-all duration-300 border border-gray-100"
+            className="relative group"
           >
-            <div className="flex items-center justify-between">
-              <div className="flex-1">
-                <p className="text-sm font-medium text-gray-600 mb-1">{stat.title}</p>
-                <div className="flex items-center space-x-2">
-                  {stat.format === 'currency' ? (
-                    <p className={`text-2xl font-bold ${
-                      stat.title === 'Total Gain/Loss' 
-                        ? portfolioData.totalGainLoss >= 0 ? 'text-green-600' : 'text-red-600'
-                        : 'text-gray-900'
-                    }`}>
-                      {showBalance ? `$${Math.abs(stat.value).toLocaleString()}` : '••••••'}
+            {/* Animated background */}
+            <div className={`absolute inset-0 bg-gradient-to-r from-${stat.color}-500/20 to-${stat.color}-600/20 rounded-2xl blur-xl opacity-50 group-hover:opacity-70 transition-opacity duration-300`}></div>
+            
+            <div className="relative bg-white/80 backdrop-blur-xl rounded-2xl shadow-xl p-6 hover:shadow-2xl transition-all duration-300 border border-white/20">
+              <div className="flex items-center justify-between">
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-gray-600 mb-1">{stat.title}</p>
+                  <div className="flex items-center space-x-2">
+                    {stat.format === 'currency' ? (
+                      <p className={`text-2xl font-bold ${
+                        stat.title === 'Total Gain/Loss' 
+                          ? portfolioData.totalGainLoss >= 0 ? 'text-green-600' : 'text-red-600'
+                          : 'text-gray-900'
+                      }`}>
+                        {showBalance ? (
+                          stat.title === 'Total Gain/Loss' 
+                            ? `${portfolioData.totalGainLoss >= 0 ? '+' : ''}$${Math.abs(stat.value).toLocaleString()}`
+                            : `$${stat.value.toLocaleString()}`
+                        ) : '••••••'}
+                      </p>
+                    ) : (
+                      <p className="text-2xl font-bold text-gray-900">{stat.value}</p>
+                    )}
+                    {stat.showToggle && (
+                      <button
+                        onClick={onToggleBalance}
+                        className="text-gray-400 hover:text-gray-600 transition-colors"
+                      >
+                        {showBalance ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    )}
+                  </div>
+                  {stat.percentage !== undefined && (
+                    <p className={`text-sm font-medium ${portfolioData.totalGainLoss >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      {portfolioData.totalGainLoss >= 0 ? '+' : ''}{showBalance ? stat.percentage.toFixed(2) : '••'}%
                     </p>
-                  ) : (
-                    <p className="text-2xl font-bold text-gray-900">{stat.value}</p>
                   )}
-                  {stat.showToggle && (
-                    <button
-                      onClick={onToggleBalance}
-                      className="text-gray-400 hover:text-gray-600 transition-colors"
-                    >
-                      {showBalance ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </button>
+                  {stat.subtitle && (
+                    <p className="text-xs text-gray-500 mt-1">{stat.subtitle}</p>
                   )}
                 </div>
-                {stat.percentage !== undefined && (
-                  <p className={`text-sm font-medium ${portfolioData.totalGainLoss >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                    {portfolioData.totalGainLoss >= 0 ? '+' : ''}{showBalance ? stat.percentage.toFixed(2) : '••'}%
-                  </p>
-                )}
+                <motion.div
+                  whileHover={{ scale: 1.1, rotate: 5 }}
+                  className={`p-3 bg-gradient-to-r from-${stat.color}-500 to-${stat.color}-600 rounded-2xl shadow-lg`}
+                >
+                  <Icon className="h-6 w-6 text-white" />
+                </motion.div>
               </div>
-              <motion.div
-                whileHover={{ scale: 1.1, rotate: 5 }}
-                className={`p-3 bg-${stat.color}-50 rounded-xl`}
-              >
-                <Icon className={`h-6 w-6 text-${stat.color}-600`} />
-              </motion.div>
             </div>
           </motion.div>
         )

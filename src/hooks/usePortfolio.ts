@@ -106,15 +106,27 @@ export const usePortfolio = () => {
         console.error('Holdings error:', holdingsError)
         setHoldings([])
       } else {
-        // Calculate real-time values for holdings
-        const updatedHoldings = holdingsData?.map(holding => ({
-          ...holding,
-          current_price: holding.investment_options.current_price,
-          company_name: holding.investment_options.name,
-          current_value: holding.shares * holding.investment_options.current_price,
-          gain_loss: holding.shares * (holding.investment_options.current_price - holding.avg_price),
-          gain_loss_percent: ((holding.investment_options.current_price - holding.avg_price) / holding.avg_price) * 100
-        })) || []
+        // Calculate real-time values for holdings with correct financial logic
+        const updatedHoldings = holdingsData?.map(holding => {
+          const currentPrice = holding.investment_options.current_price
+          const avgPrice = holding.avg_price
+          const shares = holding.shares
+          
+          // Correct financial calculations
+          const currentValue = shares * currentPrice
+          const totalInvested = shares * avgPrice
+          const absolutePL = currentValue - totalInvested
+          const percentPL = totalInvested > 0 ? (absolutePL / totalInvested) * 100 : 0
+
+          return {
+            ...holding,
+            current_price: currentPrice,
+            company_name: holding.investment_options.name,
+            current_value: currentValue,
+            gain_loss: absolutePL,
+            gain_loss_percent: percentPL
+          }
+        }) || []
 
         setHoldings(updatedHoldings)
       }
@@ -152,8 +164,8 @@ export const usePortfolio = () => {
 
       if (investments) {
         const updates = investments.map(investment => {
-          // Simulate realistic price movement (-1% to +1%)
-          const changePercent = (Math.random() - 0.5) * 0.02
+          // Simulate realistic price movement (-2% to +2%)
+          const changePercent = (Math.random() - 0.5) * 0.04
           const newPrice = investment.current_price * (1 + changePercent)
           const priceChange = newPrice - investment.current_price
           const priceChangePercent = (priceChange / investment.current_price) * 100
@@ -194,14 +206,26 @@ export const usePortfolio = () => {
             .eq('portfolio_id', portfolio.id)
 
           if (holdingsData) {
-            const updatedHoldings = holdingsData.map(holding => ({
-              ...holding,
-              current_price: holding.investment_options.current_price,
-              company_name: holding.investment_options.name,
-              current_value: holding.shares * holding.investment_options.current_price,
-              gain_loss: holding.shares * (holding.investment_options.current_price - holding.avg_price),
-              gain_loss_percent: ((holding.investment_options.current_price - holding.avg_price) / holding.avg_price) * 100
-            }))
+            const updatedHoldings = holdingsData.map(holding => {
+              const currentPrice = holding.investment_options.current_price
+              const avgPrice = holding.avg_price
+              const shares = holding.shares
+              
+              // Correct financial calculations
+              const currentValue = shares * currentPrice
+              const totalInvested = shares * avgPrice
+              const absolutePL = currentValue - totalInvested
+              const percentPL = totalInvested > 0 ? (absolutePL / totalInvested) * 100 : 0
+
+              return {
+                ...holding,
+                current_price: currentPrice,
+                company_name: holding.investment_options.name,
+                current_value: currentValue,
+                gain_loss: absolutePL,
+                gain_loss_percent: percentPL
+              }
+            })
 
             setHoldings(updatedHoldings)
           }
@@ -246,31 +270,36 @@ export const usePortfolio = () => {
 
       if (portfolioUpdateError) throw portfolioUpdateError
 
-      // Create or update holding
+      // Get investment option to link properly
+      const { data: investmentOption } = await supabase
+        .from('investment_options')
+        .select('id, name')
+        .eq('symbol', symbol)
+        .single()
+
+      // Create or update holding with correct weighted average calculation
       const existingHolding = holdings.find(h => h.symbol === symbol)
 
       if (existingHolding) {
-        const newShares = existingHolding.shares + shares
-        const newAvgPrice = ((existingHolding.shares * existingHolding.avg_price) + total) / newShares
+        // Calculate new weighted average price
+        const oldQuantity = existingHolding.shares
+        const oldAvgPrice = existingHolding.avg_price
+        const newQuantity = oldQuantity + shares
+        const newAvgPrice = ((oldQuantity * oldAvgPrice) + (shares * price)) / newQuantity
 
         const { error: holdingUpdateError } = await supabase
           .from('holdings')
           .update({
-            shares: newShares,
+            shares: newQuantity,
             avg_price: newAvgPrice,
-            current_price: price
+            current_price: price,
+            investment_option_id: investmentOption?.id
           })
           .eq('id', existingHolding.id)
 
         if (holdingUpdateError) throw holdingUpdateError
       } else {
-        // Get the investment option to ensure we have the correct name
-        const { data: investmentOption } = await supabase
-          .from('investment_options')
-          .select('name')
-          .eq('symbol', symbol)
-          .single()
-
+        // Create new holding
         const { error: holdingInsertError } = await supabase
           .from('holdings')
           .insert({
@@ -279,7 +308,8 @@ export const usePortfolio = () => {
             company_name: investmentOption?.name || companyName,
             shares,
             avg_price: price,
-            current_price: price
+            current_price: price,
+            investment_option_id: investmentOption?.id
           })
 
         if (holdingInsertError) throw holdingInsertError
@@ -291,7 +321,7 @@ export const usePortfolio = () => {
         .insert({
           portfolio_id: portfolio.id,
           symbol,
-          company_name: companyName,
+          company_name: investmentOption?.name || companyName,
           type: 'buy',
           shares,
           price,
@@ -302,6 +332,9 @@ export const usePortfolio = () => {
 
       toast.dismiss(loadingToast)
       toast.success(`Successfully bought ${shares} shares of ${symbol} at $${price.toFixed(2)}`)
+      
+      // Update local state immediately
+      setUserBalances(prev => ({ ...prev, cash_balance: newCashBalance }))
       
       // Refresh data
       await fetchPortfolioData()
@@ -345,10 +378,11 @@ export const usePortfolio = () => {
 
       if (portfolioUpdateError) throw portfolioUpdateError
 
-      // Update holding
+      // Update holding - DO NOT modify avg_price on sell
       const newShares = holding.shares - shares
       
       if (newShares === 0) {
+        // Delete holding if all shares sold
         const { error: holdingDeleteError } = await supabase
           .from('holdings')
           .delete()
@@ -356,6 +390,7 @@ export const usePortfolio = () => {
 
         if (holdingDeleteError) throw holdingDeleteError
       } else {
+        // Update quantity only, keep avg_price unchanged
         const { error: holdingUpdateError } = await supabase
           .from('holdings')
           .update({
@@ -385,6 +420,9 @@ export const usePortfolio = () => {
       toast.dismiss(loadingToast)
       toast.success(`Successfully sold ${shares} shares of ${symbol} at $${price.toFixed(2)}`)
 
+      // Update local state immediately
+      setUserBalances(prev => ({ ...prev, cash_balance: newCashBalance }))
+
       // Refresh data
       await fetchPortfolioData()
     } catch (error) {
@@ -394,14 +432,21 @@ export const usePortfolio = () => {
     }
   }
 
-  // Calculate real-time portfolio metrics
+  // Calculate real-time portfolio metrics with correct financial logic
   const totalHoldingsValue = holdings.reduce((sum, holding) => 
-    sum + (holding.current_value || holding.shares * holding.current_price), 0
+    sum + holding.current_value, 0
+  )
+  
+  const totalInvestedInHoldings = holdings.reduce((sum, holding) => 
+    sum + (holding.shares * holding.avg_price), 0
   )
   
   const totalValue = userBalances.cash_balance + userBalances.savings_balance + totalHoldingsValue
-  const totalGainLoss = totalValue - 10000 // Initial amount was $10,000
-  const totalGainLossPercent = ((totalGainLoss / 10000) * 100)
+  
+  // Calculate total gain/loss correctly
+  const initialAmount = 10000
+  const totalGainLoss = totalValue - initialAmount
+  const totalGainLossPercent = ((totalGainLoss / initialAmount) * 100)
 
   return {
     portfolio: portfolio ? {
@@ -411,9 +456,9 @@ export const usePortfolio = () => {
     } : null,
     holdings: holdings.map(holding => ({
       ...holding,
-      current_value: holding.current_value || holding.shares * holding.current_price,
-      gain_loss: holding.gain_loss || holding.shares * (holding.current_price - holding.avg_price),
-      gain_loss_percent: holding.gain_loss_percent || ((holding.current_price - holding.avg_price) / holding.avg_price) * 100
+      current_value: holding.current_value,
+      gain_loss: holding.gain_loss,
+      gain_loss_percent: holding.gain_loss_percent
     })),
     transactions,
     loading,
@@ -421,6 +466,7 @@ export const usePortfolio = () => {
     totalValue,
     totalGainLoss,
     totalGainLossPercent,
+    totalInvestedInHoldings,
     buyStock,
     sellStock,
     refreshData: fetchPortfolioData,
