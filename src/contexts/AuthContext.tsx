@@ -55,6 +55,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         data: {
           full_name: fullName,
         },
+        emailRedirectTo: window.location.origin + '/login'
       },
     })
 
@@ -62,7 +63,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       toast.error(error.message)
       throw error
     } else {
-      toast.success('Account created successfully!')
+      // Show email confirmation toast
+      toast.success('Account created! Please check your email to confirm your account.', {
+        duration: 6000,
+        style: {
+          background: '#10B981',
+          color: '#fff',
+        }
+      })
     }
   }
 

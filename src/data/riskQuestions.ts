@@ -81,8 +81,11 @@ export const riskQuestions: RiskQuestion[] = [
 ]
 
 export const calculateRiskProfile = (totalScore: number): 'conservative' | 'moderate' | 'aggressive' => {
-  if (totalScore <= 14) return 'conservative'
-  if (totalScore <= 24) return 'moderate'
+  // Fixed scoring logic based on total possible scores
+  // Min score: 7 (all 1s), Max score: 35 (all 5s except first question which max is 4)
+  // Conservative: 7-16, Moderate: 17-26, Aggressive: 27-35
+  if (totalScore <= 16) return 'conservative'
+  if (totalScore <= 26) return 'moderate'
   return 'aggressive'
 }
 

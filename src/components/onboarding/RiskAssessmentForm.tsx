@@ -74,8 +74,14 @@ const RiskAssessmentForm: React.FC<RiskAssessmentFormProps> = ({ onComplete }) =
     setIsSubmitting(true)
     
     try {
+      // Calculate total score correctly
       const totalScore = answers.reduce((sum, answer) => sum + answer.score, 0)
+      console.log('Total Score:', totalScore) // Debug log
+      
+      // Use the fixed calculation function
       const calculatedProfile = calculateRiskProfile(totalScore)
+      console.log('Calculated Profile:', calculatedProfile) // Debug log
+      
       setRiskProfile(calculatedProfile)
 
       const assessmentData: RiskAssessmentData = {
@@ -84,11 +90,11 @@ const RiskAssessmentForm: React.FC<RiskAssessmentFormProps> = ({ onComplete }) =
         riskProfile: calculatedProfile
       }
 
-      // Update user profile in Supabase
+      // Update user profile in Supabase with the CORRECT risk profile
       const { error } = await supabase
         .from('users')
         .update({
-          risk_profile: calculatedProfile,
+          risk_profile: calculatedProfile, // This should now be correct
           questionnaire_answers: answers
         })
         .eq('id', user!.id)
@@ -96,7 +102,7 @@ const RiskAssessmentForm: React.FC<RiskAssessmentFormProps> = ({ onComplete }) =
       if (error) throw error
 
       setShowResults(true)
-      toast.success('Risk assessment completed!')
+      toast.success(`Risk assessment completed! You are a ${calculatedProfile} investor.`)
       
       // Auto-proceed after showing results
       setTimeout(() => {

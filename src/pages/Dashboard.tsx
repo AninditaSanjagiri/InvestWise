@@ -7,6 +7,7 @@ import SkeletonLoader from '../components/SkeletonLoader'
 import RealTimeIndicator from '../components/RealTimeIndicator'
 import InvestmentCalculators from '../components/InvestmentCalculators'
 import NewsAndInsights from '../components/NewsAndInsights'
+import WelcomeAnimation from '../components/WelcomeAnimation'
 import { 
   DollarSign, 
   TrendingUp, 
@@ -64,10 +65,13 @@ const Dashboard: React.FC = () => {
   const [showBalance, setShowBalance] = useState(true)
   const [userRiskProfile, setUserRiskProfile] = useState<string>('')
   const [isRefreshing, setIsRefreshing] = useState(false)
+  const [showWelcomeAnimation, setShowWelcomeAnimation] = useState(false)
+  const [isNewUser, setIsNewUser] = useState(false)
 
   useEffect(() => {
     if (user) {
       fetchUserProfile()
+      checkIfNewUser()
     }
   }, [user])
 
@@ -85,6 +89,30 @@ const Dashboard: React.FC = () => {
       setUserRiskProfile(data?.risk_profile || '')
     } catch (error) {
       console.error('Error fetching user profile:', error)
+    }
+  }
+
+  const checkIfNewUser = () => {
+    if (!user) return
+    
+    // Check if user was created in the last 5 minutes (indicating new signup)
+    const userCreatedAt = new Date(user.created_at)
+    const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000)
+    const isRecentlyCreated = userCreatedAt > fiveMinutesAgo
+    
+    // Check if this is their first login (no previous session stored)
+    const hasSeenWelcome = localStorage.getItem(`welcome_shown_${user.id}`)
+    
+    if (isRecentlyCreated || !hasSeenWelcome) {
+      setIsNewUser(isRecentlyCreated)
+      setShowWelcomeAnimation(true)
+    }
+  }
+
+  const handleWelcomeComplete = () => {
+    setShowWelcomeAnimation(false)
+    if (user) {
+      localStorage.setItem(`welcome_shown_${user.id}`, 'true')
     }
   }
 
@@ -265,6 +293,17 @@ const Dashboard: React.FC = () => {
     }
   }
 
+  // Show welcome animation if needed
+  if (showWelcomeAnimation) {
+    return (
+      <WelcomeAnimation
+        onComplete={handleWelcomeComplete}
+        userName={user?.user_metadata?.full_name?.split(' ')[0] || 'Investor'}
+        isNewUser={isNewUser}
+      />
+    )
+  }
+
   if (loading) {
     return (
       <div className="space-y-6">
@@ -293,6 +332,16 @@ const Dashboard: React.FC = () => {
     visible: { opacity: 1, y: 0 }
   }
 
+  // Determine welcome message based on user status
+  const getWelcomeMessage = () => {
+    const firstName = user?.user_metadata?.full_name?.split(' ')[0] || ''
+    if (isNewUser) {
+      return `Welcome, ${firstName}!`
+    } else {
+      return `Welcome back, ${firstName}!`
+    }
+  }
+
   return (
     <motion.div
       variants={containerVariants}
@@ -308,7 +357,7 @@ const Dashboard: React.FC = () => {
             animate={{ opacity: 1, x: 0 }}
             className="text-4xl font-bold bg-gradient-to-r from-gray-900 via-blue-900 to-purple-900 bg-clip-text text-transparent"
           >
-            Welcome back{user?.user_metadata?.full_name ? `, ${user.user_metadata.full_name}` : ''}!
+            {getWelcomeMessage()}
             <motion.span
               animate={{ rotate: [0, 14, -8, 14, -4, 10, 0] }}
               transition={{ duration: 2, repeat: Infinity, repeatDelay: 3 }}

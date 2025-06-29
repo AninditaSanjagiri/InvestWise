@@ -1,11 +1,12 @@
 import React, { useState } from 'react'
-import { Link, Navigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { motion } from 'framer-motion'
 import { TrendingUp, Mail, Lock, User, Eye, EyeOff, Sparkles, Gift } from 'lucide-react'
 
 const Register: React.FC = () => {
-  const { user, signUp, loading } = useAuth()
+  const { signUp, loading } = useAuth()
+  const navigate = useNavigate()
   const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -13,10 +14,6 @@ const Register: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
-
-  if (user) {
-    return <Navigate to="/dashboard" replace />
-  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -33,6 +30,10 @@ const Register: React.FC = () => {
 
     try {
       await signUp(email, password, fullName)
+      // Redirect to login page after successful signup
+      setTimeout(() => {
+        navigate('/login')
+      }, 2000) // Give time for the toast to show
     } catch (error: any) {
       // Error handling is now done in AuthContext with toast
     } finally {
