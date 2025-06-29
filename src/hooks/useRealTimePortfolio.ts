@@ -300,14 +300,14 @@ export const useRealTimePortfolio = () => {
   const recordLearningActivity = async (activityType: 'quiz_completed' | 'term_searched' | 'video_watched', points: number = 10) => {
     try {
       // Update or create game score for learning activities
-      const { data: existingScore } = await supabase
+      const { data: existingScores } = await supabase
         .from('game_scores')
         .select('*')
         .eq('user_id', user!.id)
         .eq('game_type', 'learning')
-        .single()
 
-      if (existingScore) {
+      if (existingScores && existingScores.length > 0) {
+        const existingScore = existingScores[0]
         await supabase
           .from('game_scores')
           .update({
