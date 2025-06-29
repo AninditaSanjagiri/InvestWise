@@ -66,7 +66,9 @@ const Dashboard: React.FC = () => {
   const [isRefreshing, setIsRefreshing] = useState(false)
 
   useEffect(() => {
-    fetchUserProfile()
+    if (user) {
+      fetchUserProfile()
+    }
   }, [user])
 
   const fetchUserProfile = async () => {
@@ -88,9 +90,14 @@ const Dashboard: React.FC = () => {
 
   const handleRefresh = async () => {
     setIsRefreshing(true)
-    await updateRealTimePrices()
-    await refreshData()
-    setIsRefreshing(false)
+    try {
+      await updateRealTimePrices()
+      await refreshData()
+    } catch (error) {
+      console.error('Error refreshing data:', error)
+    } finally {
+      setIsRefreshing(false)
+    }
   }
 
   // Generate mock chart data with realistic progression
@@ -412,7 +419,11 @@ const Dashboard: React.FC = () => {
                             ? totalGainLoss >= 0 ? 'text-green-600' : 'text-red-600'
                             : 'text-gray-900'
                         }`}>
-                          {showBalance ? `$${Math.abs(stat.value).toLocaleString()}` : '••••••'}
+                          {showBalance ? (
+                            stat.title === 'Total Gain/Loss' 
+                              ? `${totalGainLoss >= 0 ? '+' : ''}$${Math.abs(stat.value).toLocaleString()}`
+                              : `$${stat.value.toLocaleString()}`
+                          ) : '••••••'}
                         </p>
                       ) : (
                         <p className="text-3xl font-bold text-gray-900">{stat.value}</p>

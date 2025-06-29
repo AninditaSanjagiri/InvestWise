@@ -305,7 +305,7 @@ const QuizAndGames: React.FC = () => {
     setSelectedAnswer(answerIndex)
   }
 
-  const handleNextQuestion = () => {
+  const handleNextQuestion = async () => {
     if (selectedAnswer === null) return
 
     const isCorrect = selectedAnswer === selectedQuiz!.questions[currentQuestion].correctAnswer
@@ -315,13 +315,46 @@ const QuizAndGames: React.FC = () => {
 
     setShowResult(true)
     
-    setTimeout(() => {
+    setTimeout(async () => {
       if (currentQuestion < selectedQuiz!.questions.length - 1) {
         setCurrentQuestion(currentQuestion + 1)
         setSelectedAnswer(null)
         setShowResult(false)
       } else {
         setQuizCompleted(true)
+        
+        // Update quiz score in database
+        try {
+          const finalScore = score + (isCorrect ? 1 : 0)
+          const points = finalScore * 20 // 20 points per correct answer
+          
+          const existingScore = gameScores.find(gs => gs.game_type === 'quiz')
+          
+          if (existingScore) {
+            await supabase
+              .from('game_scores')
+              .update({
+                score: existingScore.score + points,
+                total_attempts: existingScore.total_attempts + 1,
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', existingScore.id)
+          } else {
+            await supabase
+              .from('game_scores')
+              .insert({
+                user_id: user!.id,
+                game_type: 'quiz',
+                score: points,
+                total_attempts: 1
+              })
+          }
+          
+          fetchGameScores()
+          toast.success(`Quiz completed! +${points} points`)
+        } catch (error) {
+          console.error('Error updating quiz score:', error)
+        }
       }
     }, 2000)
   }

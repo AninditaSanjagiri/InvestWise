@@ -39,15 +39,25 @@ export const useRealTimePortfolio = () => {
   })
   const [achievements, setAchievements] = useState<Achievement[]>([])
   const [loading, setLoading] = useState(true)
+  const [lastFetchTime, setLastFetchTime] = useState<number>(0)
 
   useEffect(() => {
     if (user) {
       fetchPortfolioData()
-      // Set up real-time price updates
-      const interval = setInterval(updatePrices, 30000) // Update every 30 seconds
+      
+      // Set up controlled updates every 30 seconds
+      const interval = setInterval(() => {
+        const now = Date.now()
+        // Only update if it's been at least 30 seconds since last fetch
+        if (now - lastFetchTime > 30000) {
+          updatePrices()
+          setLastFetchTime(now)
+        }
+      }, 30000)
+      
       return () => clearInterval(interval)
     }
-  }, [user])
+  }, [user]) // Only depend on user to prevent infinite loops
 
   const fetchPortfolioData = async () => {
     try {
@@ -83,24 +93,38 @@ export const useRealTimePortfolio = () => {
         .eq('portfolio_id', portfolioData?.id)
         .order('created_at', { ascending: false })
 
-      // Calculate real-time portfolio values
-      const updatedHoldings = holdingsData?.map(holding => ({
-        ...holding,
-        current_price: holding.investment_options.current_price,
-        current_value: holding.shares * holding.investment_options.current_price,
-        gain_loss: holding.shares * (holding.investment_options.current_price - holding.avg_price),
-        gain_loss_percent: ((holding.investment_options.current_price - holding.avg_price) / holding.avg_price) * 100
-      })) || []
+      // Calculate real-time portfolio values with CORRECT financial logic
+      const updatedHoldings = holdingsData?.map(holding => {
+        const currentPrice = holding.investment_options.current_price
+        const avgPrice = holding.avg_price
+        const shares = holding.shares
+        
+        // CORRECT financial calculations
+        const currentValue = shares * currentPrice
+        const totalInvested = shares * avgPrice
+        const absolutePL = currentValue - totalInvested
+        const percentPL = totalInvested > 0 ? (absolutePL / totalInvested) * 100 : 0
+
+        return {
+          ...holding,
+          current_price: currentPrice,
+          current_value: currentValue,
+          gain_loss: absolutePL,
+          gain_loss_percent: percentPL
+        }
+      }) || []
 
       const totalHoldingsValue = updatedHoldings.reduce((sum, holding) => sum + holding.current_value, 0)
-      const totalInvested = updatedHoldings.reduce((sum, holding) => sum + (holding.shares * holding.avg_price), 0)
       const totalValue = (userData?.cash_balance || 0) + (userData?.savings_balance || 0) + totalHoldingsValue
-      const totalGainLoss = totalValue - 10000 // Initial amount
-      const totalGainLossPercent = (totalGainLoss / 10000) * 100
+      
+      // CORRECT total gain/loss calculation
+      const initialAmount = 10000
+      const totalGainLoss = totalValue - initialAmount
+      const totalGainLossPercent = (totalGainLoss / initialAmount) * 100
 
       setPortfolioData({
         totalValue,
-        totalInvested: 10000,
+        totalInvested: initialAmount,
         totalGainLoss,
         totalGainLossPercent,
         cashBalance: userData?.cash_balance || 0,
@@ -117,6 +141,8 @@ export const useRealTimePortfolio = () => {
         transactionsCount: transactionsData?.length || 0,
         totalTrades: transactionsData?.length || 0
       })
+
+      setLastFetchTime(Date.now())
 
     } catch (error) {
       console.error('Error fetching portfolio data:', error)
@@ -163,7 +189,7 @@ export const useRealTimePortfolio = () => {
             .eq('id', update.id)
         }
 
-        // Refresh portfolio data with new prices
+        // Refresh portfolio data with new prices (without showing loading)
         await fetchPortfolioData()
       }
     } catch (error) {
@@ -185,8 +211,8 @@ export const useRealTimePortfolio = () => {
         .select('*')
         .eq('user_id', user!.id)
 
-      const quizScore = gameScores?.find(gs => gs.game_type === 'quiz')
-      const predictionScore = gameScores?.find(gs => gs.game_type === 'market_prediction')
+      const quizScore = gameScores?.find(gs => gs.game_type === 'quiz')?.score || 0
+      const predictionScore = gameScores?.find(gs => gs.game_type === 'market_prediction')?.correct_predictions || 0
 
       // Define all achievements with current progress
       const allAchievements: Achievement[] = [
@@ -235,7 +261,7 @@ export const useRealTimePortfolio = () => {
           type: 'diversified_investor',
           title: 'Diversified Investor',
           description: 'Own stocks from 3 different sectors',
-          progress: Math.min(stats.holdingsCount, 3), // Simplified for now
+          progress: Math.min(stats.holdingsCount, 3),
           maxProgress: 3,
           unlocked: stats.holdingsCount >= 3,
           category: 'portfolio'
@@ -245,9 +271,9 @@ export const useRealTimePortfolio = () => {
           type: 'quiz_master',
           title: 'Quiz Master',
           description: 'Score 100 points in quizzes',
-          progress: Math.min(quizScore?.score || 0, 100),
+          progress: Math.min(quizScore, 100),
           maxProgress: 100,
-          unlocked: (quizScore?.score || 0) >= 100,
+          unlocked: quizScore >= 100,
           category: 'learning'
         },
         {
@@ -255,9 +281,9 @@ export const useRealTimePortfolio = () => {
           type: 'prediction_expert',
           title: 'Prediction Expert',
           description: 'Make 10 correct market predictions',
-          progress: Math.min(predictionScore?.correct_predictions || 0, 10),
+          progress: Math.min(predictionScore, 10),
           maxProgress: 10,
-          unlocked: (predictionScore?.correct_predictions || 0) >= 10,
+          unlocked: predictionScore >= 10,
           category: 'learning'
         },
         {
@@ -274,23 +300,36 @@ export const useRealTimePortfolio = () => {
 
       setAchievements(allAchievements)
 
-      // Check for newly unlocked achievements
-      const newlyUnlocked = allAchievements.filter(achievement => 
-        achievement.unlocked && achievement.progress === achievement.maxProgress
-      )
-
-      // Show toast for newly unlocked achievements
-      newlyUnlocked.forEach(achievement => {
+      // Check for newly unlocked achievements and record them
+      for (const achievement of allAchievements) {
         if (achievement.unlocked) {
-          toast.success(`🏆 Achievement Unlocked: ${achievement.title}!`, {
-            duration: 5000,
-            style: {
-              background: '#10B981',
-              color: '#fff',
-            }
-          })
+          // Check if already recorded
+          const existingRecord = gameScores?.find(gs => gs.game_type === achievement.type)
+          
+          if (!existingRecord) {
+            // Record the achievement
+            await supabase
+              .from('game_scores')
+              .insert({
+                user_id: user!.id,
+                game_type: achievement.type,
+                score: achievement.progress,
+                total_attempts: 1,
+                correct_predictions: achievement.type === 'prediction_expert' ? predictionScore : 0,
+                best_streak: 0
+              })
+
+            // Show achievement notification
+            toast.success(`🏆 Achievement Unlocked: ${achievement.title}!`, {
+              duration: 5000,
+              style: {
+                background: '#10B981',
+                color: '#fff',
+              }
+            })
+          }
         }
-      })
+      }
 
     } catch (error) {
       console.error('Error updating achievements:', error)
