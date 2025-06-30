@@ -433,7 +433,9 @@ const Trade: React.FC = () => {
                         <p className="text-xs text-gray-500 line-clamp-2">{investment.description}</p>
                       </div>
                       <div className="text-right ml-4">
-                        <p className="text-xl font-bold text-gray-900">${investment.current_price.toFixed(2)}</p>
+                        <p className="text-xl font-bold text-gray-900">
+                          ${investment.current_price != null ? investment.current_price.toFixed(2) : 'N/A'}
+                        </p>
                         <div className="flex items-center justify-end space-x-1">
                           {investment.price_change >= 0 ? (
                             <TrendingUp className="h-4 w-4 text-green-600" />
@@ -443,7 +445,8 @@ const Trade: React.FC = () => {
                           <span className={`text-sm font-medium ${
                             investment.price_change >= 0 ? 'text-green-600' : 'text-red-600'
                           }`}>
-                            {investment.price_change >= 0 ? '+' : ''}{investment.price_change_percent.toFixed(2)}%
+                            {investment.price_change_percent != null ? (investment.price_change >= 0 ? '+' : '') + investment.price_change_percent.toFixed(2) + '%' : 'N/A'}
+
                           </span>
                         </div>
                         {investment.volume > 0 && (
@@ -475,7 +478,7 @@ const Trade: React.FC = () => {
                   </div>
                   <div className="text-right">
                     <p className="text-2xl font-bold text-gray-900">
-                      ${selectedStock.current_price.toFixed(2)}
+                      ${selectedStock.current_price != null ? selectedStock.current_price.toFixed(2) : 'N/A'}
                     </p>
                     <div className="flex items-center space-x-2">
                       {selectedStock.price_change >= 0 ? (
@@ -487,7 +490,8 @@ const Trade: React.FC = () => {
                         selectedStock.price_change >= 0 ? 'text-green-600' : 'text-red-600'
                       }`}>
                         {selectedStock.price_change >= 0 ? '+' : ''}
-                        {selectedStock.price_change.toFixed(2)} ({selectedStock.price_change_percent.toFixed(2)}%)
+                        {selectedStock.price_change != null ? selectedStock.price_change.toFixed(2) : 'N/A'} ({selectedStock.price_change_percent != null ? selectedStock.price_change_percent.toFixed(2) : 'N/A'}%)
+
                       </span>
                     </div>
                   </div>
@@ -654,11 +658,16 @@ const Trade: React.FC = () => {
                       </div>
                       <div className="flex justify-between text-sm">
                         <span>Price per unit:</span>
-                        <span>${selectedStock.current_price.toFixed(2)}</span>
+                        <span>${selectedStock.current_price != null ? selectedStock.current_price.toFixed(2) : 'N/A'}</span>
+
                       </div>
                       <div className="flex justify-between font-medium border-t pt-2">
                         <span>Total:</span>
-                        <span>${(parseInt(shares) * selectedStock.current_price).toLocaleString()}</span>
+                        <span>
+                          {selectedStock.current_price != null
+                            ? `$${(parseInt(shares) * selectedStock.current_price).toLocaleString()}`
+                            : 'N/A'}
+                        </span>
                       </div>
                     </div>
                   )}
@@ -732,7 +741,7 @@ const Trade: React.FC = () => {
                         ${holding.current_value.toLocaleString()}
                       </p>
                       <p className="text-xs text-gray-500">
-                        @${holding.current_price.toFixed(2)}
+                        @{holding.current_price != null ? `$${holding.current_price.toFixed(2)}` : 'N/A'}
                       </p>
                     </div>
                   </div>
