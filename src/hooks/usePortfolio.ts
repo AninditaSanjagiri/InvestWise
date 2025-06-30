@@ -74,9 +74,10 @@ export const usePortfolio = () => {
         .from('portfolios')
         .select('*')
         .eq('user_id', user.id)
-        .single()
+        .maybeSingle()
 
-      if (portfolioError && portfolioError.code === 'PGRST116') {
+
+      if (!portfolioData) {
         const { data: newPortfolio, error: createError } = await supabase
           .from('portfolios')
           .insert({
@@ -86,18 +87,22 @@ export const usePortfolio = () => {
           })
           .select()
           .single()
-        
         if (createError) {
           console.error('Error creating portfolio:', createError)
           throw createError
         }
+
         portfolioData = newPortfolio
+
       } else if (portfolioError) {
         console.error('Portfolio error:', portfolioError)
         throw portfolioError
       }
 
       setPortfolio(portfolioData)
+      
+
+     
 
       // Get holdings with current prices from investment_options
       const { data: holdingsData, error: holdingsError } = await supabase
@@ -278,7 +283,7 @@ export const usePortfolio = () => {
         .from('investment_options')
         .select('id, name')
         .eq('symbol', symbol)
-        .single()
+        .maybeSingle()
 
       // Create or update holding with correct weighted average calculation
       const existingHolding = holdings.find(h => h.symbol === symbol)
